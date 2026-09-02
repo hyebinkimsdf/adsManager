@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { HiOutlineArrowLeft } from "react-icons/hi2";
 import { useCampaigns } from "@/lib/mock/store";
+import { useUiMode } from "@/lib/ui/mode";
+import { buildRoasBuckets } from "@/lib/insights";
 import { CampaignListItem } from "@/components/dashboard/CampaignListItem";
+import { SimpleSummaryHeader } from "@/components/campaigns/SimpleSummaryHeader";
+import { SimpleRoasStatusCards } from "@/components/campaigns/SimpleRoasStatusCards";
+import { SimpleAiRecommendBanner } from "@/components/campaigns/SimpleAiRecommendBanner";
+import { SimpleQuickLinkCards } from "@/components/campaigns/SimpleQuickLinkCards";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
@@ -15,11 +22,13 @@ const FILTERS = [
 
 export default function CampaignsPage() {
   const campaigns = useCampaigns();
+  const mode = useUiMode();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["key"]>("all");
+  const [view, setView] = useState<"summary" | "list">("summary");
 
   const filtered = campaigns.filter((c) => filter === "all" || c.status === filter);
 
-  return (
+  const listSection = (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <h1 className="text-[20px] font-bold text-[var(--color-gray-900)]">캠페인</h1>
@@ -57,4 +66,35 @@ export default function CampaignsPage() {
       </div>
     </div>
   );
+
+  if (mode === "simple") {
+    if (view === "list") {
+      return (
+        <div className="flex flex-col gap-5">
+          <button
+            type="button"
+            onClick={() => setView("summary")}
+            className="flex w-fit items-center gap-1.5 text-[13px] font-medium text-[var(--color-gray-500)] hover:text-[var(--color-gray-700)]"
+          >
+            <HiOutlineArrowLeft className="h-4 w-4" aria-hidden="true" />
+            요약으로 돌아가기
+          </button>
+          {listSection}
+        </div>
+      );
+    }
+
+    const buckets = buildRoasBuckets(campaigns);
+
+    return (
+      <div className="flex flex-col gap-5">
+        <SimpleSummaryHeader />
+        <SimpleRoasStatusCards buckets={buckets} />
+        <SimpleAiRecommendBanner campaigns={campaigns} />
+        <SimpleQuickLinkCards onShowList={() => setView("list")} />
+      </div>
+    );
+  }
+
+  return listSection;
 }
