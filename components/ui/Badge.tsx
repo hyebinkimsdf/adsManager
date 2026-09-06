@@ -1,28 +1,44 @@
 import { type HTMLAttributes } from "react";
-import { cn } from "@/lib/cn";
+import styled from "@emotion/styled";
+import { css, type Theme } from "@emotion/react";
 
 type Tone = "blue" | "gray" | "green" | "red";
-
-const toneClass: Record<Tone, string> = {
-  blue: "bg-[var(--color-blue-50)] text-[var(--color-blue-600)]",
-  gray: "bg-[var(--color-gray-100)] text-[var(--color-gray-600)]",
-  green: "bg-[var(--color-green-50)] text-[var(--color-green-600)]",
-  red: "bg-[var(--color-red-50)] text-[var(--color-red-500)]",
-};
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: Tone;
 }
 
-export function Badge({ className, tone = "gray", ...props }: BadgeProps) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-[var(--radius-full)] px-2.5 py-1 text-[12px] font-medium",
-        toneClass[tone],
-        className
-      )}
-      {...props}
-    />
-  );
+const toneStyle = (theme: Theme, tone: Tone) =>
+  ({
+    blue: css`
+      background-color: ${theme.colors.blue[50]};
+      color: ${theme.colors.blue[600]};
+    `,
+    gray: css`
+      background-color: ${theme.colors.gray[100]};
+      color: ${theme.colors.gray[600]};
+    `,
+    green: css`
+      background-color: ${theme.colors.green[50]};
+      color: ${theme.colors.green[600]};
+    `,
+    red: css`
+      background-color: ${theme.colors.red[50]};
+      color: ${theme.colors.red[500]};
+    `,
+  })[tone];
+
+const StyledBadge = styled.span<{ $tone: Tone }>`
+  display: inline-flex;
+  align-items: center;
+  border-radius: ${({ theme }) => theme.radius.full};
+  padding: 0.25rem 0.625rem;
+  font-size: 12px;
+  font-weight: 500;
+
+  ${({ theme, $tone }) => toneStyle(theme, $tone)}
+`;
+
+export function Badge({ tone = "gray", ...props }: BadgeProps) {
+  return <StyledBadge $tone={tone} {...props} />;
 }

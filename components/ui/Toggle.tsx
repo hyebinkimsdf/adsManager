@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/cn";
+import styled from "@emotion/styled";
 
 interface ToggleProps {
   checked: boolean;
@@ -9,26 +9,50 @@ interface ToggleProps {
   disabled?: boolean;
 }
 
+const Track = styled.button<{ $checked: boolean }>`
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 1.75rem;
+  width: 3rem;
+  border-radius: ${({ theme }) => theme.radius.full};
+  transition: background-color ${({ theme }) => theme.motion.duration.fast};
+  background-color: ${({ theme, $checked }) => ($checked ? theme.colors.blue[500] : theme.colors.gray[200])};
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px ${({ theme }) => theme.colors.blue[500]};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+`;
+
+const Thumb = styled.span<{ $checked: boolean }>`
+  display: inline-block;
+  height: 1.25rem;
+  width: 1.25rem;
+  border-radius: ${({ theme }) => theme.radius.full};
+  background-color: white;
+  box-shadow: ${({ theme }) => theme.shadow.card};
+  transition: transform ${({ theme }) => theme.motion.duration.fast};
+  transform: translateX(${({ $checked }) => ($checked ? "1.5rem" : "0.25rem")});
+`;
+
 export function Toggle({ checked, onChange, label, disabled }: ToggleProps) {
   return (
-    <button
+    <Track
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={cn(
-        "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blue-500)] focus-visible:ring-offset-2 disabled:opacity-50",
-        checked ? "bg-[var(--color-blue-500)]" : "bg-[var(--color-gray-200)]"
-      )}
+      $checked={checked}
     >
-      <span
-        className={cn(
-          "inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-150",
-          checked ? "translate-x-6" : "translate-x-1"
-        )}
-      />
-    </button>
+      <Thumb $checked={checked} />
+    </Track>
   );
 }

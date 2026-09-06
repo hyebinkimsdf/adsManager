@@ -1,9 +1,17 @@
-import { cn } from "@/lib/cn";
+import styled from "@emotion/styled";
 
-export function Skeleton({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn("animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-gray-100)]", className)}
-    />
-  );
-}
+export const Skeleton = styled.div`
+  border-radius: ${({ theme }) => theme.radius.sm};
+  background-color: ${({ theme }) => theme.colors.gray[100]};
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+`;

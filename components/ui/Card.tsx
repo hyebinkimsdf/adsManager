@@ -1,27 +1,21 @@
-import { type HTMLAttributes } from "react";
-import { cn } from "@/lib/cn";
+import styled from "@emotion/styled";
 
-export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn(
-        "rounded-[var(--radius-lg)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]",
-        className
-      )}
-      {...props}
-    />
-  );
-}
+export const Card = styled.div`
+  border-radius: ${({ theme }) => theme.radius.lg};
+  background: ${({ theme }) => theme.colors.surface};
+  padding: 1.25rem;
+  box-shadow: ${({ theme }) => theme.shadow.card};
+`;
 
-export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mb-3 flex items-center justify-between", className)} {...props} />;
-}
+export const CardHeader = styled.div`
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
 
-export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return (
-    <h3
-      className={cn("text-[15px] font-semibold text-[var(--color-gray-800)]", className)}
-      {...props}
-    />
-  );
-}
+export const CardTitle = styled.h3`
+  font-size: 15px;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.gray[800]};
+`;

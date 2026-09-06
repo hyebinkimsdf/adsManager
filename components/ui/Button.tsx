@@ -1,5 +1,6 @@
 import { type ButtonHTMLAttributes, forwardRef } from "react";
-import { cn } from "@/lib/cn";
+import styled from "@emotion/styled";
+import { css, type Theme } from "@emotion/react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
@@ -9,37 +10,99 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size;
 }
 
-const variantClass: Record<Variant, string> = {
-  primary:
-    "bg-[var(--color-blue-500)] text-white hover:bg-[var(--color-blue-600)] active:bg-[var(--color-blue-700)] disabled:bg-[var(--color-gray-200)] disabled:text-[var(--color-gray-400)]",
-  secondary:
-    "bg-[var(--color-gray-100)] text-[var(--color-gray-800)] hover:bg-[var(--color-gray-200)] disabled:text-[var(--color-gray-400)]",
-  ghost:
-    "bg-transparent text-[var(--color-gray-700)] hover:bg-[var(--color-gray-100)] disabled:text-[var(--color-gray-400)]",
-  danger:
-    "bg-[var(--color-red-50)] text-[var(--color-red-500)] hover:bg-[#fbdcda] disabled:text-[var(--color-gray-400)]",
+const variantStyle = (theme: Theme, variant: Variant) =>
+  ({
+    primary: css`
+      background-color: ${theme.colors.blue[500]};
+      color: white;
+      &:hover:not(:disabled) {
+        background-color: ${theme.colors.blue[600]};
+      }
+      &:active:not(:disabled) {
+        background-color: ${theme.colors.blue[700]};
+      }
+      &:disabled {
+        background-color: ${theme.colors.gray[200]};
+        color: ${theme.colors.gray[400]};
+      }
+    `,
+    secondary: css`
+      background-color: ${theme.colors.gray[100]};
+      color: ${theme.colors.gray[800]};
+      &:hover:not(:disabled) {
+        background-color: ${theme.colors.gray[200]};
+      }
+      &:disabled {
+        color: ${theme.colors.gray[400]};
+      }
+    `,
+    ghost: css`
+      background-color: transparent;
+      color: ${theme.colors.gray[700]};
+      &:hover:not(:disabled) {
+        background-color: ${theme.colors.gray[100]};
+      }
+      &:disabled {
+        color: ${theme.colors.gray[400]};
+      }
+    `,
+    danger: css`
+      background-color: ${theme.colors.red[50]};
+      color: ${theme.colors.red[500]};
+      &:hover:not(:disabled) {
+        background-color: #fbdcda;
+      }
+      &:disabled {
+        color: ${theme.colors.gray[400]};
+      }
+    `,
+  })[variant];
+
+const sizeStyle: Record<Size, ReturnType<typeof css>> = {
+  sm: css`
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    font-size: 13px;
+    gap: 0.375rem;
+  `,
+  md: css`
+    height: 2.75rem;
+    padding: 0 1rem;
+    font-size: 14px;
+    gap: 0.5rem;
+  `,
+  lg: css`
+    height: 3.25rem;
+    padding: 0 1.25rem;
+    font-size: 15px;
+    gap: 0.5rem;
+  `,
 };
 
-const sizeClass: Record<Size, string> = {
-  sm: "h-9 px-3 text-[13px] gap-1.5",
-  md: "h-11 px-4 text-[14px] gap-2",
-  lg: "h-13 px-5 text-[15px] gap-2",
-};
+const StyledButton = styled.button<{ $variant: Variant; $size: Size }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: ${({ theme }) => theme.radius.sm};
+  font-weight: 600;
+  transition: background-color ${({ theme }) => theme.motion.duration.fast};
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px ${({ theme }) => theme.colors.blue[500]};
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  ${({ theme, $variant }) => variantStyle(theme, $variant)}
+  ${({ $size }) => sizeStyle[$size]}
+`;
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "md", ...props }, ref) => {
-    return (
-      <button
-        ref={ref}
-        className={cn(
-          "inline-flex items-center justify-center rounded-[var(--radius-sm)] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blue-500)] focus-visible:ring-offset-2 disabled:cursor-not-allowed",
-          variantClass[variant],
-          sizeClass[size],
-          className
-        )}
-        {...props}
-      />
-    );
+  ({ variant = "primary", size = "md", ...props }, ref) => {
+    return <StyledButton ref={ref} $variant={variant} $size={size} {...props} />;
   }
 );
 Button.displayName = "Button";
