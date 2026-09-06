@@ -1,6 +1,5 @@
 import type { AssistantAction, AssistantReply, CampaignSnapshot } from "./types";
 import { formatPercent } from "../format";
-import { INDUSTRY_TAILS } from "./keywordHeuristics";
 
 let actionCounter = 0;
 function nextId(): string {
@@ -24,12 +23,6 @@ function bestByRoas(campaigns: CampaignSnapshot[]): CampaignSnapshot | undefined
   const active = campaigns.filter((c) => c.status === "active");
   if (active.length === 0) return undefined;
   return [...active].sort((a, b) => b.roas - a.roas)[0];
-}
-
-function suggestKeywordsFor(campaign: CampaignSnapshot): string[] {
-  const tails = INDUSTRY_TAILS[campaign.industry] ?? INDUSTRY_TAILS.etc;
-  const candidates = [campaign.name, ...tails.map((tail) => `${campaign.name} ${tail}`)];
-  return candidates.filter((k) => !campaign.keywords.includes(k)).slice(0, 4);
 }
 
 export function mockAssistantReply(message: string, campaigns: CampaignSnapshot[]): AssistantReply {
@@ -111,21 +104,16 @@ export function mockAssistantReply(message: string, campaigns: CampaignSnapshot[
 
   if (wantsKeywords) {
     const target = mentioned ?? campaigns[0];
-    if (!target) return { reply: "키워드를 추가할 캠페인을 먼저 알려주세요.", actions: [] };
-    const keywords = suggestKeywordsFor(target);
-    if (keywords.length === 0) {
-      return { reply: `${target.name}에는 이미 비슷한 키워드가 있어요. 다른 방향의 키워드를 원하시면 알려주세요.`, actions: [] };
-    }
+    if (!target) return { reply: "키워드를 추천할 캠페인을 먼저 알려주세요.", actions: [] };
     return {
-      reply: `${target.name}에 추가할 만한 키워드를 몇 개 준비했어요. 확인하고 적용해 주세요.`,
+      reply: `${target.name}의 키워드는 실제 검색량·경쟁도 데이터를 보면서 정하는 게 정확해요. 키워드 도구를 열어드릴게요.`,
       actions: [
         {
           id: nextId(),
-          type: "add_keywords",
-          label: "키워드 추가",
-          description: `${target.name}에 ${keywords.join(", ")} 키워드를 추가해요.`,
+          type: "open_keyword_tool",
+          label: "키워드 도구 열기",
+          description: `${target.name}의 실제 검색량·경쟁도 기반 키워드 추천을 확인해요.`,
           campaignId: target.id,
-          keywords,
           riskLevel: "low",
         },
       ],
