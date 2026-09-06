@@ -5,7 +5,7 @@ export type ActionType =
   | "pause_campaign"
   | "resume_campaign"
   | "update_targeting"
-  | "add_keywords"
+  | "open_keyword_tool"
   | "adjust_keyword_bids"
   | "info";
 
@@ -36,7 +36,7 @@ export interface ChatTurn {
   pending?: boolean;
 }
 
-export type EngineKind = "on-device" | "preview" | "naver-ads";
+export type EngineKind = "on-device" | "cloud" | "preview" | "naver-ads";
 
 export interface CampaignSnapshot {
   id: string;
