@@ -1,3 +1,4 @@
+/** @jsxImportSource @emotion/react */
 "use client";
 
 interface LineChartProps {
@@ -32,8 +33,14 @@ export function LineChart({
   const areaPath = `${linePath} L${points[points.length - 1].x.toFixed(1)},${height} L${points[0].x.toFixed(1)},${height} Z`;
 
   return (
-    <div className="w-full">
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full" preserveAspectRatio="none" role="img" aria-label="성과 추이 그래프">
+    <div css={{ width: "100%" }}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        css={{ width: "100%" }}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label="성과 추이 그래프"
+      >
         <defs>
           <linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.18" />
@@ -47,7 +54,7 @@ export function LineChart({
         )}
       </svg>
       {showAxis && labels && (
-        <div className="mt-1 flex justify-between text-[11px] text-[var(--color-gray-400)]">
+        <div css={{ marginTop: "0.25rem", display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--color-gray-400)" }}>
           <span>{labels[0]}</span>
           <span>{labels[labels.length - 1]}</span>
         </div>

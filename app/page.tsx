@@ -1,5 +1,7 @@
+/** @jsxImportSource @emotion/react */
 "use client";
 
+import { css } from "@emotion/react";
 import Link from "next/link";
 import { HiOutlineChartBar, HiOutlineArrowTrendingUp, HiOutlineShoppingCart } from "react-icons/hi2";
 import { useCampaigns } from "@/lib/mock/store";
@@ -63,14 +65,23 @@ export default function HomePage() {
     const monthConversions = combine(campaigns, 14, "conversions");
 
     return (
-      <div className="flex flex-col gap-6">
+      <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
         <SimpleHeader />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div
+          css={css`
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+            @media (min-width: 640px) {
+              grid-template-columns: repeat(3, 1fr);
+            }
+          `}
+        >
           <SimpleStat
             icon={HiOutlineChartBar}
-            iconBg="bg-[var(--color-gray-100)]"
-            iconColor="text-[var(--color-gray-700)]"
+            iconBg="var(--color-gray-100)"
+            iconColor="var(--color-gray-700)"
             label="이번 달 광고비"
             value={formatCompactKRW(monthSpend)}
             unit="원"
@@ -78,8 +89,8 @@ export default function HomePage() {
           />
           <SimpleStat
             icon={HiOutlineArrowTrendingUp}
-            iconBg="bg-[var(--color-blue-50)]"
-            iconColor="text-[var(--color-blue-600)]"
+            iconBg="var(--color-blue-50)"
+            iconColor="var(--color-blue-600)"
             label="전환 수"
             value={formatNumber(monthClicks)}
             unit="회"
@@ -87,8 +98,8 @@ export default function HomePage() {
           />
           <SimpleStat
             icon={HiOutlineShoppingCart}
-            iconBg="bg-[var(--color-green-50)]"
-            iconColor="text-[var(--color-green-600)]"
+            iconBg="var(--color-green-50)"
+            iconColor="var(--color-green-600)"
             label="구매 수"
             value={formatNumber(monthConversions)}
             unit="건"
@@ -98,8 +109,10 @@ export default function HomePage() {
 
         {simpleActions.length > 0 && (
           <div>
-            <h2 className="mb-3 text-[15px] font-bold text-[var(--color-gray-900)]">지금 확인해주세요</h2>
-            <div className="flex flex-col gap-2.5">
+            <h2 css={{ marginBottom: "0.75rem", fontSize: 15, fontWeight: 700, color: "var(--color-gray-900)" }}>
+              지금 확인해주세요
+            </h2>
+            <div css={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
               {simpleActions.map((item) => (
                 <SimpleActionCard key={item.id} item={item} />
               ))}
@@ -107,12 +120,30 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="flex flex-col gap-4 lg:col-span-2">
+        <div
+          css={css`
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            @media (min-width: 1024px) {
+              grid-template-columns: repeat(3, 1fr);
+            }
+          `}
+        >
+          <div
+            css={css`
+              display: flex;
+              flex-direction: column;
+              gap: 1rem;
+              @media (min-width: 1024px) {
+                grid-column: span 2 / span 2;
+              }
+            `}
+          >
             <SimpleQuickActions campaigns={campaigns} />
             <SimpleCampaignCompare campaigns={campaigns} />
           </div>
-          <div className="flex flex-col gap-4">
+          <div css={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             <SimpleAssistantPanel />
             <SimpleTipCard />
           </div>
@@ -122,15 +153,24 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div>
-        <h1 className="text-[20px] font-bold text-[var(--color-gray-900)]">오늘의 광고 현황</h1>
-        <p className="mt-1 text-[13px] text-[var(--color-gray-500)]">
+        <h1 css={{ fontSize: 20, fontWeight: 700, color: "var(--color-gray-900)" }}>오늘의 광고 현황</h1>
+        <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
           우측 하단 ✨ 버튼을 눌러 AI에게 바로 물어볼 수 있어요.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div
+        css={css`
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 0.75rem;
+          @media (min-width: 640px) {
+            grid-template-columns: repeat(4, 1fr);
+          }
+        `}
+      >
         <SummaryCard label="오늘 지출" value={formatCompactKRW(todaySpend)} unit="원" trend={trend(campaigns, "spend")} />
         <SummaryCard label="오늘 전환" value={formatNumber(todayConversions)} unit="건" trend={trend(campaigns, "conversions")} />
         <SummaryCard label="7일 ROAS" value={formatPercent(roas7, 0)} trend={trend(campaigns, "revenue")} />
@@ -139,12 +179,18 @@ export default function HomePage() {
 
       {insights.length > 0 && (
         <Card>
-          <p className="mb-3 text-[13px] font-semibold text-[var(--color-gray-500)]">AI 인사이트</p>
-          <div className="flex flex-col gap-2.5">
+          <p css={{ marginBottom: "0.75rem", fontSize: 13, fontWeight: 600, color: "var(--color-gray-500)" }}>AI 인사이트</p>
+          <div css={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
             {insights.map((insight) => (
-              <div key={insight.id} className="flex items-start gap-2">
+              <div key={insight.id} css={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
                 <span
-                  className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full"
+                  css={{
+                    marginTop: "0.25rem",
+                    height: "0.375rem",
+                    width: "0.375rem",
+                    flexShrink: 0,
+                    borderRadius: "9999px",
+                  }}
                   style={{
                     background:
                       insight.tone === "positive"
@@ -155,7 +201,7 @@ export default function HomePage() {
                   }}
                   aria-hidden="true"
                 />
-                <p className="text-[14px] leading-relaxed text-[var(--color-gray-800)]">{insight.text}</p>
+                <p css={{ fontSize: 14, lineHeight: 1.6, color: "var(--color-gray-800)" }}>{insight.text}</p>
               </div>
             ))}
           </div>
@@ -163,13 +209,13 @@ export default function HomePage() {
       )}
 
       <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[15px] font-bold text-[var(--color-gray-900)]">캠페인</h2>
-          <Link href="/campaigns" className="text-[13px] font-medium text-[var(--color-blue-600)]">
+        <div css={{ marginBottom: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h2 css={{ fontSize: 15, fontWeight: 700, color: "var(--color-gray-900)" }}>캠페인</h2>
+          <Link href="/campaigns" css={{ fontSize: 13, fontWeight: 500, color: "var(--color-blue-600)" }}>
             전체보기
           </Link>
         </div>
-        <div className="flex flex-col gap-2.5">
+        <div css={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
           {campaigns.slice(0, 4).map((c) => (
             <CampaignListItem key={c.id} campaign={c} />
           ))}

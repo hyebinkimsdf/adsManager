@@ -1,13 +1,16 @@
+/** @jsxImportSource @emotion/react */
+"use client";
+
+import { css } from "@emotion/react";
 import { HiOutlineArrowTrendingDown, HiOutlineArrowTrendingUp } from "react-icons/hi2";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { cn } from "@/lib/cn";
 import { formatPercent } from "@/lib/format";
 import type { RoasBucket } from "@/lib/insights";
 
 const TONE: Record<RoasBucket["key"], { bg: string; label: string }> = {
-  good: { bg: "bg-[var(--color-green-50)]", label: "text-[var(--color-green-600)]" },
-  okay: { bg: "bg-[var(--color-yellow-50)]", label: "text-[var(--color-yellow-600)]" },
-  bad: { bg: "bg-[var(--color-red-50)]", label: "text-[var(--color-red-500)]" },
+  good: { bg: "var(--color-green-50)", label: "var(--color-green-600)" },
+  okay: { bg: "var(--color-yellow-50)", label: "var(--color-yellow-600)" },
+  bad: { bg: "var(--color-red-50)", label: "var(--color-red-500)" },
 };
 
 export function SimpleRoasStatusCards({ buckets }: { buckets: RoasBucket[] }) {
@@ -16,26 +19,66 @@ export function SimpleRoasStatusCards({ buckets }: { buckets: RoasBucket[] }) {
       <CardHeader>
         <CardTitle>전체 광고 성과는 어떤가요?</CardTitle>
       </CardHeader>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div
+        css={css`
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 0.75rem;
+          @media (min-width: 640px) {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        `}
+      >
         {buckets.map((b) => (
           <div
             key={b.key}
-            className={cn("flex flex-col items-center gap-2 rounded-[var(--radius-lg)] p-5 text-center", TONE[b.key].bg)}
+            css={css`
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 0.5rem;
+              border-radius: var(--radius-lg);
+              padding: 1.25rem;
+              text-align: center;
+            `}
+            style={{ backgroundColor: TONE[b.key].bg }}
           >
-            <span className="text-[40px] leading-none" aria-hidden="true">
+            <span css={{ fontSize: 40, lineHeight: 1 }} aria-hidden="true">
               {b.emoji}
             </span>
-            <p className={cn("text-[17px] font-bold", TONE[b.key].label)}>{b.label}</p>
-            <p className="text-[13px] leading-relaxed text-[var(--color-gray-600)]">{b.description}</p>
-            <div className="mt-1 w-full rounded-[var(--radius-md)] bg-white px-4 py-3 shadow-[var(--shadow-card)]">
-              <p className="text-[12px] text-[var(--color-gray-500)]">평균 ROAS</p>
-              <p className="mt-0.5 flex items-center justify-center gap-1 text-[20px] font-bold text-[var(--color-gray-900)]">
+            <p css={{ fontSize: 17, fontWeight: 700 }} style={{ color: TONE[b.key].label }}>
+              {b.label}
+            </p>
+            <p css={{ fontSize: 13, lineHeight: 1.6, color: "var(--color-gray-600)" }}>{b.description}</p>
+            <div
+              css={css`
+                margin-top: 0.25rem;
+                width: 100%;
+                border-radius: var(--radius-md);
+                background: white;
+                padding: 0.75rem 1rem;
+                box-shadow: var(--shadow-card);
+              `}
+            >
+              <p css={{ fontSize: 12, color: "var(--color-gray-500)" }}>평균 ROAS</p>
+              <p
+                css={{
+                  marginTop: "0.125rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.25rem",
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: "var(--color-gray-900)",
+                }}
+              >
                 {b.count > 0 ? formatPercent(b.avgRoas, 0) : "-"}
                 {b.count > 0 && b.key === "good" && (
-                  <HiOutlineArrowTrendingUp className="h-4 w-4 text-[var(--color-green-600)]" aria-hidden="true" />
+                  <HiOutlineArrowTrendingUp style={{ height: "1rem", width: "1rem", color: "var(--color-green-600)" }} aria-hidden="true" />
                 )}
                 {b.count > 0 && b.key === "bad" && (
-                  <HiOutlineArrowTrendingDown className="h-4 w-4 text-[var(--color-red-500)]" aria-hidden="true" />
+                  <HiOutlineArrowTrendingDown style={{ height: "1rem", width: "1rem", color: "var(--color-red-500)" }} aria-hidden="true" />
                 )}
               </p>
             </div>

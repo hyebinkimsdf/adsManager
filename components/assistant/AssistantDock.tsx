@@ -1,5 +1,7 @@
+/** @jsxImportSource @emotion/react */
 "use client";
 
+import { css } from "@emotion/react";
 import { useRef, useState, useEffect, type FormEvent } from "react";
 import { HiSparkles } from "react-icons/hi2";
 import { SlideOver } from "@/components/ui/SlideOver";
@@ -70,9 +72,35 @@ export function AssistantDock() {
         type="button"
         onClick={() => openAssistantDock()}
         aria-label="AI 어시스턴트 열기"
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-blue-500)] text-white shadow-[var(--shadow-float)] transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blue-700)] focus-visible:ring-offset-2"
+        css={css`
+          position: fixed;
+          bottom: 1.5rem;
+          right: 1.5rem;
+          z-index: 40;
+          display: flex;
+          height: 3.5rem;
+          width: 3.5rem;
+          align-items: center;
+          justify-content: center;
+          border-radius: 9999px;
+          background-color: var(--color-blue-500);
+          color: white;
+          box-shadow: var(--shadow-float);
+          transition: transform 150ms;
+
+          &:hover {
+            transform: scale(1.05);
+          }
+          &:active {
+            transform: scale(0.95);
+          }
+          &:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px var(--color-blue-700);
+          }
+        `}
       >
-        <HiSparkles className="h-6 w-6" aria-hidden="true" />
+        <HiSparkles style={{ height: "1.5rem", width: "1.5rem" }} aria-hidden="true" />
       </button>
 
       <SlideOver
@@ -80,7 +108,7 @@ export function AssistantDock() {
         onClose={() => closeAssistantDock()}
         title="AI 어시스턴트"
         footer={
-          <form onSubmit={handleSubmit} className="flex items-end gap-2">
+          <form onSubmit={handleSubmit} css={{ display: "flex", alignItems: "flex-end", gap: "0.5rem" }}>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -92,7 +120,22 @@ export function AssistantDock() {
               }}
               placeholder="예: 예산 늘려줘"
               rows={1}
-              className="max-h-24 flex-1 resize-none rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-gray-50)] px-3.5 py-2.5 text-[14px] text-[var(--color-gray-900)] outline-none focus:border-[var(--color-blue-500)]"
+              css={css`
+                max-height: 6rem;
+                flex: 1;
+                resize: none;
+                border-radius: var(--radius-sm);
+                border: 1px solid var(--border-subtle);
+                background: var(--color-gray-50);
+                padding: 0.625rem 0.875rem;
+                font-size: 14px;
+                color: var(--color-gray-900);
+                outline: none;
+
+                &:focus {
+                  border-color: var(--color-blue-500);
+                }
+              `}
             />
             <Button type="submit" size="md" disabled={!input.trim()}>
               전송
@@ -101,7 +144,7 @@ export function AssistantDock() {
         }
       >
         <AvailabilityBanner state={state} downloadProgress={downloadProgress} />
-        <div ref={scrollRef} className="flex flex-col gap-3">
+        <div ref={scrollRef} css={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           {turns.map((turn) =>
             turn.role === "user" ? (
               <ChatBubble key={turn.id} role="user">
@@ -110,10 +153,17 @@ export function AssistantDock() {
             ) : turn.pending ? (
               <TypingBubble key={turn.id} />
             ) : (
-              <div key={turn.id} className="flex flex-col gap-2">
+              <div key={turn.id} css={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <ChatBubble role="assistant">{turn.reply?.reply}</ChatBubble>
                 {turn.engineUsed === "preview" && (
-                  <span className="-mt-1 text-[11px] text-[var(--color-gray-400)]">미리보기 응답이에요</span>
+                  <span css={{ marginTop: "-0.25rem", fontSize: 11, color: "var(--color-gray-400)" }}>
+                    미리보기 응답이에요
+                  </span>
+                )}
+                {turn.engineUsed === "cloud" && (
+                  <span css={{ marginTop: "-0.25rem", fontSize: 11, color: "var(--color-gray-400)" }}>
+                    클라우드 AI로 답변했어요
+                  </span>
                 )}
                 {turn.reply?.actions.map((action) => (
                   <ActionProposalCard key={action.id} action={action} onApply={applyAction} />
@@ -123,13 +173,24 @@ export function AssistantDock() {
           )}
         </div>
         {turns.length <= 1 && (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div css={{ marginTop: "1rem", display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => send(s)}
-                className="rounded-[var(--radius-full)] border border-[var(--border-subtle)] px-3 py-1.5 text-[12px] text-[var(--color-gray-600)] hover:border-[var(--color-blue-500)] hover:text-[var(--color-blue-600)]"
+                css={css`
+                  border-radius: 9999px;
+                  border: 1px solid var(--border-subtle);
+                  padding: 0.375rem 0.75rem;
+                  font-size: 12px;
+                  color: var(--color-gray-600);
+
+                  &:hover {
+                    border-color: var(--color-blue-500);
+                    color: var(--color-blue-600);
+                  }
+                `}
               >
                 {s}
               </button>

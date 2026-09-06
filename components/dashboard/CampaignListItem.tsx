@@ -1,5 +1,7 @@
+/** @jsxImportSource @emotion/react */
 "use client";
 
+import { css } from "@emotion/react";
 import Link from "next/link";
 import {
   HiOutlineMagnifyingGlass,
@@ -28,21 +30,58 @@ export function CampaignListItem({ campaign }: { campaign: Campaign }) {
   const ChannelIcon = CHANNEL_ICON[campaign.channels[0]];
 
   return (
-    <div className="flex items-center gap-3 rounded-[var(--radius-md)] bg-white p-4 shadow-[var(--shadow-card)]">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-gray-100)] text-[var(--color-gray-600)]">
-        <ChannelIcon className="h-5 w-5" aria-hidden="true" />
+    <div
+      css={css`
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        border-radius: var(--radius-md);
+        background: white;
+        padding: 1rem;
+        box-shadow: var(--shadow-card);
+      `}
+    >
+      <div
+        css={css`
+          display: flex;
+          height: 2.75rem;
+          width: 2.75rem;
+          flex-shrink: 0;
+          align-items: center;
+          justify-content: center;
+          border-radius: var(--radius-sm);
+          background-color: var(--color-gray-100);
+          color: var(--color-gray-600);
+        `}
+      >
+        <ChannelIcon style={{ height: "1.25rem", width: "1.25rem" }} aria-hidden="true" />
       </div>
-      <div className="min-w-0 flex-1">
-        <Link href={`/campaigns/${campaign.id}`} className="block truncate text-[14px] font-semibold text-[var(--color-gray-900)] hover:text-[var(--color-blue-600)]">
+      <div css={{ minWidth: 0, flex: 1 }}>
+        <Link
+          href={`/campaigns/${campaign.id}`}
+          css={css`
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-gray-900);
+
+            &:hover {
+              color: var(--color-blue-600);
+            }
+          `}
+        >
           {campaign.name}
         </Link>
-        <div className="mt-1 flex items-center gap-2">
+        <div css={{ marginTop: "0.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           {campaign.channels.map((ch) => (
             <Badge key={ch} tone="gray">
               {CHANNEL_LABEL[ch]}
             </Badge>
           ))}
-          <span className="text-[12px] text-[var(--color-gray-500)]">
+          <span css={{ fontSize: 12, color: "var(--color-gray-500)" }}>
             ROAS {formatPercent(totals.roas, 0)} · 일 {formatCompactKRW(campaign.dailyBudget)}원
           </span>
         </div>
@@ -60,9 +99,23 @@ export function CampaignListItem({ campaign }: { campaign: Campaign }) {
             deleteCampaign(campaign.id);
           }
         }}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--color-gray-400)] hover:bg-[var(--color-red-50)] hover:text-[var(--color-red-500)]"
+        css={css`
+          display: flex;
+          height: 2rem;
+          width: 2rem;
+          flex-shrink: 0;
+          align-items: center;
+          justify-content: center;
+          border-radius: 9999px;
+          color: var(--color-gray-400);
+
+          &:hover {
+            background-color: var(--color-red-50);
+            color: var(--color-red-500);
+          }
+        `}
       >
-        <HiOutlineTrash className="h-4 w-4" aria-hidden="true" />
+        <HiOutlineTrash style={{ height: "1rem", width: "1rem" }} aria-hidden="true" />
       </button>
     </div>
   );

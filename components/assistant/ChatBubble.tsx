@@ -1,5 +1,41 @@
+/** @jsxImportSource @emotion/react */
+"use client";
+
+import { css, keyframes } from "@emotion/react";
 import { HiPencil } from "react-icons/hi2";
-import { cn } from "@/lib/cn";
+
+const bubbleBase = css`
+  max-width: 85%;
+  white-space: pre-wrap;
+  border-radius: var(--radius-md);
+  padding: 0.625rem 1rem;
+  font-size: 14px;
+  line-height: 1.6;
+`;
+
+const bubbleUser = css`
+  background-color: var(--color-blue-500);
+  color: white;
+  border-bottom-right-radius: 6px;
+`;
+
+const bubbleAssistant = css`
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-800);
+  border-bottom-left-radius: 6px;
+`;
+
+const bubbleButton = css`
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  text-align: left;
+  transition: opacity 150ms;
+
+  &:hover {
+    opacity: 0.85;
+  }
+`;
 
 export function ChatBubble({
   role,
@@ -11,43 +47,78 @@ export function ChatBubble({
   onClick?: () => void;
 }) {
   const isUser = role === "user";
-  const bubbleClass = cn(
-    "max-w-[85%] whitespace-pre-wrap rounded-[var(--radius-md)] px-4 py-2.5 text-[14px] leading-relaxed",
-    isUser
-      ? "bg-[var(--color-blue-500)] text-white rounded-br-[6px]"
-      : "bg-[var(--color-gray-100)] text-[var(--color-gray-800)] rounded-bl-[6px]"
-  );
 
   if (onClick) {
     return (
-      <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+      <div css={css({ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" })}>
         <button
           type="button"
           onClick={onClick}
           title="눌러서 다시 선택하기"
-          className={cn(bubbleClass, "flex items-center gap-1.5 text-left transition-opacity hover:opacity-85")}
+          css={[bubbleBase, isUser ? bubbleUser : bubbleAssistant, bubbleButton]}
         >
           {children}
-          <HiPencil className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
+          <HiPencil style={{ height: "0.875rem", width: "0.875rem", flexShrink: 0, opacity: 0.7 }} aria-hidden="true" />
         </button>
       </div>
     );
   }
 
   return (
-    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
-      <div className={bubbleClass}>{children}</div>
+    <div css={css({ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" })}>
+      <div css={[bubbleBase, isUser ? bubbleUser : bubbleAssistant]}>{children}</div>
     </div>
   );
 }
 
+const pulseDot = keyframes`
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+`;
+
 export function TypingBubble() {
   return (
-    <div className="flex justify-start">
-      <div className="flex items-center gap-1 rounded-[var(--radius-md)] rounded-bl-[6px] bg-[var(--color-gray-100)] px-4 py-3">
-        <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-[var(--color-gray-500)] [animation-delay:0ms]" />
-        <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-[var(--color-gray-500)] [animation-delay:150ms]" />
-        <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-[var(--color-gray-500)] [animation-delay:300ms]" />
+    <div css={{ display: "flex", justifyContent: "flex-start" }}>
+      <div
+        css={css`
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          border-radius: var(--radius-md);
+          border-bottom-left-radius: 6px;
+          background-color: var(--color-gray-100);
+          padding: 0.75rem 1rem;
+        `}
+      >
+        <span
+          css={css`
+            height: 0.375rem;
+            width: 0.375rem;
+            border-radius: 9999px;
+            background-color: var(--color-gray-500);
+            animation: ${pulseDot} 1.1s ease-in-out infinite;
+          `}
+        />
+        <span
+          css={css`
+            height: 0.375rem;
+            width: 0.375rem;
+            border-radius: 9999px;
+            background-color: var(--color-gray-500);
+            animation: ${pulseDot} 1.1s ease-in-out infinite;
+            animation-delay: 150ms;
+          `}
+        />
+        <span
+          css={css`
+            height: 0.375rem;
+            width: 0.375rem;
+            border-radius: 9999px;
+            background-color: var(--color-gray-500);
+            animation: ${pulseDot} 1.1s ease-in-out infinite;
+            animation-delay: 300ms;
+          `}
+        />
       </div>
     </div>
   );

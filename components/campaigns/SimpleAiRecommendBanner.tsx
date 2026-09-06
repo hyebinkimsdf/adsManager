@@ -1,5 +1,7 @@
+/** @jsxImportSource @emotion/react */
 "use client";
 
+import { css } from "@emotion/react";
 import { useState } from "react";
 import {
   HiArrowRight,
@@ -36,41 +38,84 @@ export function SimpleAiRecommendBanner({ campaigns }: { campaigns: Campaign[] }
   };
 
   return (
-    <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-start gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-blue-50)]">
-          <HiSparkles className="h-6 w-6 text-[var(--color-blue-500)]" aria-hidden="true" />
+    <Card
+      css={css`
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        @media (min-width: 640px) {
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+        }
+      `}
+    >
+      <div css={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
+        <span
+          css={css`
+            display: flex;
+            height: 3rem;
+            width: 3rem;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            background-color: var(--color-blue-50);
+          `}
+        >
+          <HiSparkles style={{ height: "1.5rem", width: "1.5rem", color: "var(--color-blue-500)" }} aria-hidden="true" />
         </span>
         <div>
-          <p className="text-[12px] font-semibold text-[var(--color-blue-600)]">✦ AI 추천</p>
-          <p className="mt-0.5 text-[16px] font-bold text-[var(--color-gray-900)]">
+          <p css={{ fontSize: 12, fontWeight: 600, color: "var(--color-blue-600)" }}>✦ AI 추천</p>
+          <p css={{ marginTop: "0.125rem", fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>
             광고 성과를 더 높일 수 있어요!
           </p>
-          <p className="mt-1 text-[13px] text-[var(--color-gray-500)]">
+          <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
             AI가 캠페인을 분석했어요. 아래 버튼을 눌러 개선해보세요.
           </p>
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <div css={{ marginTop: "0.625rem", display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
             {TAGS.map((t) => (
               <span
                 key={t.label}
-                className="inline-flex items-center gap-1 rounded-[var(--radius-full)] bg-[var(--color-gray-100)] px-2.5 py-1 text-[12px] font-medium text-[var(--color-gray-600)]"
+                css={css`
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 0.25rem;
+                  border-radius: 9999px;
+                  background-color: var(--color-gray-100);
+                  padding: 0.25rem 0.625rem;
+                  font-size: 12px;
+                  font-weight: 500;
+                  color: var(--color-gray-600);
+                `}
               >
-                <t.icon className="h-3.5 w-3.5" aria-hidden="true" />
+                <t.icon style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
                 {t.label}
               </span>
             ))}
           </div>
         </div>
       </div>
-      <Button size="lg" className="w-full shrink-0 sm:w-auto" disabled={applied} onClick={handleImprove}>
+      <Button
+        size="lg"
+        css={css`
+          width: 100%;
+          flex-shrink: 0;
+          @media (min-width: 640px) {
+            width: auto;
+          }
+        `}
+        disabled={applied}
+        onClick={handleImprove}
+      >
         {applied ? (
-          <span className="flex items-center gap-1.5">
-            <HiCheck className="h-4 w-4" aria-hidden="true" /> 적용 완료
+          <span css={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+            <HiCheck style={{ height: "1rem", width: "1rem" }} aria-hidden="true" /> 적용 완료
           </span>
         ) : (
-          <span className="flex items-center gap-1.5">
-            <HiSparkles className="h-4 w-4" aria-hidden="true" /> AI가 개선하기
-            <HiArrowRight className="h-4 w-4" aria-hidden="true" />
+          <span css={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+            <HiSparkles style={{ height: "1rem", width: "1rem" }} aria-hidden="true" /> AI가 개선하기
+            <HiArrowRight style={{ height: "1rem", width: "1rem" }} aria-hidden="true" />
           </span>
         )}
       </Button>

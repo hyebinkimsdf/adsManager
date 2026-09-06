@@ -1,18 +1,17 @@
+/** @jsxImportSource @emotion/react */
 "use client";
 
+import { css } from "@emotion/react";
 import { useEffect, useState } from "react";
 import { HiOutlineChatBubbleLeftRight, HiCheckCircle, HiArrowPath } from "react-icons/hi2";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { openAssistantDock } from "@/lib/ui/assistantDock";
-import { cn } from "@/lib/cn";
 
 const STEPS = ["목표 설정", "AI 분석 중...", "세팅 제안 준비 중"];
 const STEP_INTERVAL_MS = 2200;
 
 export function SimpleAssistantPanel() {
-  // 첫 단계(목표 설정)는 항상 완료 상태로 두고, 나머지 두 단계를 번갈아 "진행 중"으로 보여줘
-  // AI가 계속 분석하고 있다는 느낌을 준다.
   const [activeStep, setActiveStep] = useState(1);
 
   useEffect(() => {
@@ -23,43 +22,90 @@ export function SimpleAssistantPanel() {
   }, []);
 
   return (
-    <Card className="flex flex-col gap-4 bg-[var(--color-blue-50)]">
-      <div className="flex items-center gap-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[var(--color-blue-600)]">
-          <HiOutlineChatBubbleLeftRight className="h-4 w-4" aria-hidden="true" />
+    <Card
+      css={css`
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        background-color: var(--color-blue-50);
+      `}
+    >
+      <div css={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <span
+          css={{
+            display: "flex",
+            height: "2rem",
+            width: "2rem",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "9999px",
+            background: "white",
+            color: "var(--color-blue-600)",
+          }}
+        >
+          <HiOutlineChatBubbleLeftRight style={{ height: "1rem", width: "1rem" }} aria-hidden="true" />
         </span>
-        <p className="text-[15px] font-bold text-[var(--color-gray-900)]">AI 어시스턴트</p>
+        <p css={{ fontSize: 15, fontWeight: 700, color: "var(--color-gray-900)" }}>AI 어시스턴트</p>
       </div>
 
       <div>
-        <p className="text-[14px] font-semibold text-[var(--color-gray-900)]">안녕하세요! 👋</p>
-        <p className="mt-0.5 text-[13px] leading-relaxed text-[var(--color-gray-600)]">
+        <p css={{ fontSize: 14, fontWeight: 600, color: "var(--color-gray-900)" }}>안녕하세요! 👋</p>
+        <p css={{ marginTop: "0.125rem", fontSize: 13, lineHeight: 1.6, color: "var(--color-gray-600)" }}>
           광고 세팅을 더 쉽게 도와드릴게요.
         </p>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div css={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {STEPS.map((label, i) => {
           const isDone = i === 0;
           const isActive = i === activeStep;
           return (
-            <div key={label} className="flex items-center gap-2 text-[13px]">
+            <div key={label} css={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: 13 }}>
               {isDone ? (
-                <HiCheckCircle className="h-4 w-4 shrink-0 text-[var(--color-green-600)]" aria-hidden="true" />
+                <HiCheckCircle
+                  style={{ height: "1rem", width: "1rem", flexShrink: 0, color: "var(--color-green-600)" }}
+                  aria-hidden="true"
+                />
               ) : isActive ? (
-                <HiArrowPath className="h-4 w-4 shrink-0 animate-spin text-[var(--color-blue-500)]" aria-hidden="true" />
+                <HiArrowPath
+                  css={css`
+                    height: 1rem;
+                    width: 1rem;
+                    flex-shrink: 0;
+                    color: var(--color-blue-500);
+                    animation: spin 1s linear infinite;
+                    @keyframes spin {
+                      from {
+                        transform: rotate(0deg);
+                      }
+                      to {
+                        transform: rotate(360deg);
+                      }
+                    }
+                  `}
+                  aria-hidden="true"
+                />
               ) : (
-                <span className="h-4 w-4 shrink-0 rounded-full border-2 border-[var(--color-gray-300)]" aria-hidden="true" />
+                <span
+                  css={{
+                    height: "1rem",
+                    width: "1rem",
+                    flexShrink: 0,
+                    borderRadius: "9999px",
+                    border: "2px solid var(--color-gray-300)",
+                  }}
+                  aria-hidden="true"
+                />
               )}
               <span
-                className={cn(
-                  "font-medium",
-                  isDone
-                    ? "text-[var(--color-gray-700)]"
+                css={{
+                  fontWeight: 500,
+                  color: isDone
+                    ? "var(--color-gray-700)"
                     : isActive
-                    ? "text-[var(--color-gray-900)]"
-                    : "text-[var(--color-gray-400)]"
-                )}
+                    ? "var(--color-gray-900)"
+                    : "var(--color-gray-400)",
+                }}
               >
                 {label}
               </span>
@@ -68,7 +114,7 @@ export function SimpleAssistantPanel() {
         })}
       </div>
 
-      <Button size="md" className="w-full" onClick={() => openAssistantDock()}>
+      <Button size="md" css={{ width: "100%" }} onClick={() => openAssistantDock()}>
         ✨ AI 추천 받기
       </Button>
     </Card>

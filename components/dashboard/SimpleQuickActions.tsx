@@ -1,5 +1,7 @@
+/** @jsxImportSource @emotion/react */
 "use client";
 
+import { css } from "@emotion/react";
 import { useState } from "react";
 import { HiOutlineSparkles, HiViewfinderCircle, HiSparkles, HiCheck } from "react-icons/hi2";
 import type { IconType } from "react-icons";
@@ -7,7 +9,6 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { addKeywords, adjustBudgetByPercent } from "@/lib/mock/store";
 import { sumHistory } from "@/lib/mock/campaigns";
 import { INDUSTRY_TAILS } from "@/lib/ai/keywordHeuristics";
-import { cn } from "@/lib/cn";
 import type { Campaign } from "@/lib/mock/types";
 
 interface Recommendation {
@@ -32,8 +33,8 @@ const RECOMMENDATIONS: Recommendation[] = [
   {
     id: "precise-setup",
     icon: HiViewfinderCircle,
-    iconBg: "bg-[var(--color-blue-50)]",
-    iconColor: "text-[var(--color-blue-600)]",
+    iconBg: "var(--color-blue-50)",
+    iconColor: "var(--color-blue-600)",
     label: "더 정확한 광고 세팅하기",
     detail: "AI가 키워드, 타겟, 예산을 분석해 성과를 높여드려요.",
     run: (campaigns) => {
@@ -47,8 +48,8 @@ const RECOMMENDATIONS: Recommendation[] = [
   {
     id: "efficiency",
     icon: HiSparkles,
-    iconBg: "bg-[var(--color-green-50)]",
-    iconColor: "text-[var(--color-green-600)]",
+    iconBg: "var(--color-green-50)",
+    iconColor: "var(--color-green-600)",
     label: "광고 효율 높이기",
     detail: "불필요한 지출은 줄이고 효율은 높이는 방법이에요.",
     run: (campaigns) => {
@@ -71,23 +72,55 @@ export function SimpleQuickActions({ campaigns }: { campaigns: Campaign[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-1.5">
-          <HiOutlineSparkles className="h-4 w-4 text-[var(--color-blue-500)]" aria-hidden="true" />
+        <CardTitle css={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+          <HiOutlineSparkles style={{ height: "1rem", width: "1rem", color: "var(--color-blue-500)" }} aria-hidden="true" />
           AI 맞춤 추천
         </CardTitle>
       </CardHeader>
-      <div className="flex flex-col divide-y divide-[var(--border-subtle)]">
-        {RECOMMENDATIONS.map((r) => {
+      <div
+        css={css`
+          display: flex;
+          flex-direction: column;
+
+          & > div + div {
+            border-top: 1px solid var(--border-subtle);
+          }
+        `}
+      >
+        {RECOMMENDATIONS.map((r, i) => {
           const isDone = done[r.id];
           const Icon = r.icon;
           return (
-            <div key={r.id} className="flex items-center gap-3 py-3.5 first:pt-0 last:pb-0">
-              <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", r.iconBg)}>
-                <Icon className={cn("h-5 w-5", r.iconColor)} aria-hidden="true" />
+            <div
+              key={r.id}
+              css={css`
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 0.875rem 0;
+                ${i === 0 && "padding-top: 0;"}
+                ${i === RECOMMENDATIONS.length - 1 && "padding-bottom: 0;"}
+              `}
+            >
+              <span
+                css={{
+                  display: "flex",
+                  height: "2.5rem",
+                  width: "2.5rem",
+                  flexShrink: 0,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "9999px",
+                  backgroundColor: r.iconBg,
+                }}
+              >
+                <Icon style={{ height: "1.25rem", width: "1.25rem", color: r.iconColor }} aria-hidden="true" />
               </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-bold text-[var(--color-gray-900)]">{r.label}</p>
-                <p className="mt-0.5 text-[13px] leading-relaxed text-[var(--color-gray-500)]">{r.detail}</p>
+              <div css={{ minWidth: 0, flex: 1 }}>
+                <p css={{ fontSize: 14, fontWeight: 700, color: "var(--color-gray-900)" }}>{r.label}</p>
+                <p css={{ marginTop: "0.125rem", fontSize: 13, lineHeight: 1.6, color: "var(--color-gray-500)" }}>
+                  {r.detail}
+                </p>
               </div>
               <button
                 type="button"
@@ -96,16 +129,24 @@ export function SimpleQuickActions({ campaigns }: { campaigns: Campaign[] }) {
                   r.run(campaigns);
                   setDone((prev) => ({ ...prev, [r.id]: true }));
                 }}
-                className={cn(
-                  "shrink-0 rounded-[var(--radius-full)] px-3.5 py-2 text-[13px] font-semibold transition-colors",
-                  isDone
-                    ? "bg-[var(--color-green-50)] text-[var(--color-green-600)]"
-                    : "bg-[var(--color-blue-50)] text-[var(--color-blue-600)] hover:bg-[var(--color-blue-100)]"
-                )}
+                css={css`
+                  flex-shrink: 0;
+                  border-radius: 9999px;
+                  padding: 0.5rem 0.875rem;
+                  font-size: 13px;
+                  font-weight: 600;
+                  transition: background-color 150ms;
+                  background-color: ${isDone ? "var(--color-green-50)" : "var(--color-blue-50)"};
+                  color: ${isDone ? "var(--color-green-600)" : "var(--color-blue-600)"};
+
+                  &:hover {
+                    background-color: ${isDone ? "var(--color-green-50)" : "var(--color-blue-100)"};
+                  }
+                `}
               >
                 {isDone ? (
-                  <span className="flex items-center gap-1">
-                    <HiCheck className="h-4 w-4" aria-hidden="true" /> 적용 완료
+                  <span css={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                    <HiCheck style={{ height: "1rem", width: "1rem" }} aria-hidden="true" /> 적용 완료
                   </span>
                 ) : (
                   "추천 받기"

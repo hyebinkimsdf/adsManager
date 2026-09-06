@@ -1,5 +1,7 @@
+/** @jsxImportSource @emotion/react */
 "use client";
 
+import { css } from "@emotion/react";
 import { useState } from "react";
 import { HiOutlineLightBulb, HiChevronRight } from "react-icons/hi2";
 import { Card } from "@/components/ui/Card";
@@ -35,16 +37,28 @@ export function SimpleTipCard() {
 
   return (
     <Card>
-      <div className="mb-3 flex items-center gap-1.5">
-        <HiOutlineLightBulb className="h-4 w-4 text-[var(--color-blue-500)]" aria-hidden="true" />
-        <p className="text-[13px] font-semibold text-[var(--color-gray-900)]">오늘의 AI 팁</p>
+      <div css={{ marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.375rem" }}>
+        <HiOutlineLightBulb style={{ height: "1rem", width: "1rem", color: "var(--color-blue-500)" }} aria-hidden="true" />
+        <p css={{ fontSize: 13, fontWeight: 600, color: "var(--color-gray-900)" }}>오늘의 AI 팁</p>
       </div>
-      <button type="button" onClick={nextTip} className="flex w-full items-center gap-2 text-left">
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-bold leading-relaxed text-[var(--color-gray-900)]">{tip.title}</p>
-          <p className="mt-1 text-[12px] leading-relaxed text-[var(--color-gray-500)]">{tip.detail}</p>
+      <button
+        type="button"
+        onClick={nextTip}
+        css={css`
+          display: flex;
+          width: 100%;
+          align-items: center;
+          gap: 0.5rem;
+          text-align: left;
+        `}
+      >
+        <div css={{ minWidth: 0, flex: 1 }}>
+          <p css={{ fontSize: 13, fontWeight: 700, lineHeight: 1.6, color: "var(--color-gray-900)" }}>{tip.title}</p>
+          <p css={{ marginTop: "0.25rem", fontSize: 12, lineHeight: 1.6, color: "var(--color-gray-500)" }}>
+            {tip.detail}
+          </p>
         </div>
-        <HiChevronRight className="h-4 w-4 shrink-0 text-[var(--color-gray-300)]" aria-hidden="true" />
+        <HiChevronRight style={{ height: "1rem", width: "1rem", flexShrink: 0, color: "var(--color-gray-300)" }} aria-hidden="true" />
       </button>
     </Card>
   );

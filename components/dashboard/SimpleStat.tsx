@@ -1,6 +1,8 @@
+/** @jsxImportSource @emotion/react */
+"use client";
+
 import type { IconType } from "react-icons";
 import { Card } from "@/components/ui/Card";
-import { cn } from "@/lib/cn";
 
 export function SimpleStat({
   icon: Icon,
@@ -24,32 +26,41 @@ export function SimpleStat({
   trendTone?: "positive" | "negative" | "neutral";
 }) {
   const showTrend = typeof trendPercent === "number" && trendSuffix;
+  const trendColor =
+    trendTone === "positive"
+      ? "var(--color-green-600)"
+      : trendTone === "negative"
+      ? "var(--color-red-500)"
+      : "var(--color-gray-700)";
 
   return (
-    <Card className="flex flex-col gap-3">
-      <span className={cn("flex h-11 w-11 items-center justify-center rounded-[14px]", iconBg)}>
-        <Icon className={cn("h-5 w-5", iconColor)} aria-hidden="true" />
+    <Card css={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+      <span
+        css={{
+          display: "flex",
+          height: "2.75rem",
+          width: "2.75rem",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 14,
+          backgroundColor: iconBg,
+        }}
+      >
+        <Icon style={{ height: "1.25rem", width: "1.25rem", color: iconColor }} aria-hidden="true" />
       </span>
       <div>
-        <p className="text-[13px] text-[var(--color-gray-500)]">{label}</p>
-        <p className="mt-1 flex items-baseline gap-1">
-          <span className="text-[1.75rem] font-bold leading-none text-[var(--color-gray-900)]">{value}</span>
-          {unit && <span className="text-[13px] font-medium text-[var(--color-gray-500)]">{unit}</span>}
+        <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>{label}</p>
+        <p css={{ marginTop: "0.25rem", display: "flex", alignItems: "baseline", gap: "0.25rem" }}>
+          <span css={{ fontSize: "1.75rem", fontWeight: 700, lineHeight: 1, color: "var(--color-gray-900)" }}>
+            {value}
+          </span>
+          {unit && <span css={{ fontSize: 13, fontWeight: 500, color: "var(--color-gray-500)" }}>{unit}</span>}
         </p>
       </div>
       {showTrend && (
-        <p className="text-[13px] text-[var(--color-gray-500)]">
+        <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>
           지난달보다{" "}
-          <span
-            className={cn(
-              "font-semibold",
-              trendTone === "positive" && "text-[var(--color-green-600)]",
-              trendTone === "negative" && "text-[var(--color-red-500)]",
-              trendTone === "neutral" && "text-[var(--color-gray-700)]"
-            )}
-          >
-            {Math.abs(trendPercent!).toFixed(0)}%
-          </span>{" "}
+          <span css={{ fontWeight: 600, color: trendColor }}>{Math.abs(trendPercent!).toFixed(0)}%</span>{" "}
           {trendSuffix}
         </p>
       )}

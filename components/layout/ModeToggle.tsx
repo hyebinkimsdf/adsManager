@@ -1,44 +1,48 @@
+/** @jsxImportSource @emotion/react */
 "use client";
 
-import { cn } from "@/lib/cn";
+import { css } from "@emotion/react";
 import { useUiMode, setUiMode } from "@/lib/ui/mode";
 
-export function ModeToggle({ className }: { className?: string }) {
+const segmentStyle = (active: boolean) => css`
+  flex: 1;
+  white-space: nowrap;
+  border-radius: 9999px;
+  padding: 0.375rem 0.625rem;
+  font-size: 12px;
+  font-weight: 500;
+  transition: color 150ms, background-color 150ms;
+  background-color: ${active ? "white" : "transparent"};
+  color: ${active ? "var(--color-blue-600)" : "var(--color-gray-500)"};
+  box-shadow: ${active ? "0 1px 2px rgba(0,0,0,0.05)" : "none"};
+
+  ${!active &&
+  `
+    &:hover {
+      color: var(--color-gray-700);
+    }
+  `}
+`;
+
+export function ModeToggle() {
   const mode = useUiMode();
 
   return (
     <div
       role="group"
       aria-label="화면 모드 선택"
-      className={cn(
-        "inline-flex items-center rounded-[var(--radius-full)] bg-[var(--color-gray-100)] p-1",
-        className
-      )}
+      css={css`
+        display: inline-flex;
+        align-items: center;
+        border-radius: 9999px;
+        background-color: var(--color-gray-100);
+        padding: 0.25rem;
+      `}
     >
-      <button
-        type="button"
-        aria-pressed={mode === "simple"}
-        onClick={() => setUiMode("simple")}
-        className={cn(
-          "flex-1 whitespace-nowrap rounded-[var(--radius-full)] px-2.5 py-1.5 text-[12px] font-medium transition-colors",
-          mode === "simple"
-            ? "bg-white text-[var(--color-blue-600)] shadow-sm"
-            : "text-[var(--color-gray-500)] hover:text-[var(--color-gray-700)]"
-        )}
-      >
+      <button type="button" aria-pressed={mode === "simple"} onClick={() => setUiMode("simple")} css={segmentStyle(mode === "simple")}>
         🙂 간편
       </button>
-      <button
-        type="button"
-        aria-pressed={mode === "expert"}
-        onClick={() => setUiMode("expert")}
-        className={cn(
-          "flex-1 whitespace-nowrap rounded-[var(--radius-full)] px-2.5 py-1.5 text-[12px] font-medium transition-colors",
-          mode === "expert"
-            ? "bg-white text-[var(--color-blue-600)] shadow-sm"
-            : "text-[var(--color-gray-500)] hover:text-[var(--color-gray-700)]"
-        )}
-      >
+      <button type="button" aria-pressed={mode === "expert"} onClick={() => setUiMode("expert")} css={segmentStyle(mode === "expert")}>
         ⚙️ 전문가
       </button>
     </div>

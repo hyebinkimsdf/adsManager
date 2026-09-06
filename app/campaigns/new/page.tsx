@@ -1,5 +1,7 @@
+/** @jsxImportSource @emotion/react */
 "use client";
 
+import { css } from "@emotion/react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
@@ -8,12 +10,11 @@ import { Badge } from "@/components/ui/Badge";
 import { ChatBubble } from "@/components/assistant/ChatBubble";
 import { KeywordAssistant } from "@/components/campaigns/KeywordAssistant";
 import { addCampaign } from "@/lib/mock/store";
-import { cn } from "@/lib/cn";
 import { CHANNEL_LABEL, INDUSTRY_LABEL, OBJECTIVE_LABEL } from "@/lib/mock/campaigns";
 import { formatKRW } from "@/lib/format";
 import type { Campaign, CampaignChannel, CampaignIndustry, CampaignObjective } from "@/lib/mock/types";
 
-type Step = "objective" | "industry" | "channel" | "name" | "keywords" | "budget" | "age" | "gender" | "review";
+type Step = "objective" | "industry" | "channel" | "name" | "budget" | "ranking" | "keywords" | "age" | "gender" | "review";
 
 const OBJECTIVES: { key: CampaignObjective; desc: string }[] = [
   { key: "conversion", desc: "구매·가입 등 전환을 늘려요" },
@@ -41,8 +42,49 @@ const CHANNELS: { key: CampaignChannel; desc: string }[] = [
   { key: "video", desc: "영상 콘텐츠 앞뒤로 노출돼요" },
 ];
 
-const BUDGET_PRESETS = [30000, 50000, 100000, 200000];
+const BUDGET_TIERS: { daily: number; label: string; note: string; recommended?: boolean }[] = [
+  { daily: 30000, label: "적게 사용", note: "노출이 적어서 광고 효과가 약할 수 있어요" },
+  { daily: 100000, label: "보통", note: "무난하게 효과를 볼 수 있는 금액이에요", recommended: true },
+  { daily: 200000, label: "많이 사용", note: "더 많이 노출되지만 비용 부담이 커요" },
+];
+
+const RANKING_TIERS: { position: number; label: string; note: string; recommended?: boolean }[] = [
+  { position: 1, label: "가장 위", note: "가장 눈에 잘 띄지만 비용이 커요" },
+  { position: 3, label: "중간 정도", note: "적당한 비용으로 무난하게 노출돼요", recommended: true },
+  { position: 5, label: "저렴하게", note: "비용은 적지만 노출이 줄어요" },
+];
+
 const AGE_PRESETS = ["10대", "20대", "30대", "40대", "50대 이상", "전체"];
+
+const inputStyle = css`
+  flex: 1;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--color-gray-50);
+  padding: 0.625rem 0.875rem;
+  font-size: 14px;
+  outline: none;
+
+  &:focus {
+    border-color: var(--color-blue-500);
+  }
+`;
+
+const tierButtonStyle = css`
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+  transition: border-color 150ms, background-color 150ms;
+
+  &:hover {
+    border-color: var(--color-blue-500);
+    background-color: var(--color-blue-50);
+  }
+`;
 
 function nextId() {
   return `camp-custom-${Date.now()}`;
@@ -59,9 +101,9 @@ export default function NewCampaignPage() {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordsConfirmed, setKeywordsConfirmed] = useState(false);
   const [keywordBids, setKeywordBids] = useState<Record<string, number>>({});
-  const [budgetSuggestion, setBudgetSuggestion] = useState<number | null>(null);
   const [budget, setBudget] = useState<number | null>(null);
   const [budgetDraft, setBudgetDraft] = useState("");
+  const [targetPosition, setTargetPosition] = useState<number | null>(null);
   const [age, setAge] = useState<string | null>(null);
   const [gender, setGender] = useState<"all" | "male" | "female" | null>(null);
 
@@ -70,7 +112,7 @@ export default function NewCampaignPage() {
     return `${INDUSTRY_LABEL[industry]} ${OBJECTIVE_LABEL[objective]} · ${channels.map((c) => CHANNEL_LABEL[c]).join("/")} 캠페인`;
   }, [objective, industry, channels]);
 
-  function createCampaign() {
+  async function createCampaign() {
     if (!objective || !industry || channels.length === 0 || !budget || !age || !gender) return;
     const campaign: Campaign = {
       id: nextId(),
@@ -90,21 +132,33 @@ export default function NewCampaignPage() {
       },
       history: [],
     };
-    addCampaign(campaign);
+    await addCampaign(campaign);
     router.push(`/campaigns/${campaign.id}`);
   }
 
   return (
-    <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-6">
-      <Card className="flex flex-col gap-4">
+    <div
+      css={css`
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        @media (min-width: 1024px) {
+          display: grid;
+          grid-template-columns: 1.1fr 0.9fr;
+          align-items: flex-start;
+          gap: 1.5rem;
+        }
+      `}
+    >
+      <Card css={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         <div>
-          <h1 className="text-[18px] font-bold text-[var(--color-gray-900)]">새 캠페인 만들기</h1>
-          <p className="mt-1 text-[13px] text-[var(--color-gray-500)]">
+          <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>새 캠페인 만들기</h1>
+          <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
             몇 가지만 답하면 바로 만들어드려요. 오른쪽에서 실시간으로 확인하세요.
           </p>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div css={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           <ChatBubble role="assistant">어떤 목표로 캠페인을 만들까요?</ChatBubble>
           {step === "objective" ? (
             <ChipGroup
@@ -149,7 +203,7 @@ export default function NewCampaignPage() {
             <>
               <ChatBubble role="assistant">어떤 채널에 노출할까요? 여러 개를 함께 골라도 좋아요.</ChatBubble>
               {step === "channel" ? (
-                <div className="flex flex-col gap-2">
+                <div css={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                   <MultiChipGroup
                     items={CHANNELS.map((c) => ({ key: c.key, label: CHANNEL_LABEL[c.key], desc: c.desc }))}
                     selected={channels}
@@ -165,7 +219,7 @@ export default function NewCampaignPage() {
                       setChannelsConfirmed(true);
                       setStep("name");
                     }}
-                    className="self-start"
+                    css={{ alignSelf: "flex-start" }}
                   >
                     다음
                   </Button>
@@ -184,14 +238,14 @@ export default function NewCampaignPage() {
             <>
               <ChatBubble role="assistant">캠페인 이름을 정해주세요. (비워두면 자동으로 지어드려요)</ChatBubble>
               {step === "name" ? (
-                <div className="flex gap-2">
+                <div css={{ display: "flex", gap: "0.5rem" }}>
                   <input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={suggestedName}
-                    className="flex-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-gray-50)] px-3.5 py-2.5 text-[14px] outline-none focus:border-[var(--color-blue-500)]"
+                    css={inputStyle}
                   />
-                  <Button size="md" onClick={() => setStep("keywords")}>
+                  <Button size="md" onClick={() => setStep("budget")}>
                     다음
                   </Button>
                 </div>
@@ -203,101 +257,140 @@ export default function NewCampaignPage() {
             </>
           )}
 
-          {channelsConfirmed && (["keywords", "budget", "age", "gender", "review"].includes(step) || keywordsConfirmed) && (
+          {channelsConfirmed && (["budget", "ranking", "keywords", "age", "gender", "review"].includes(step) || budget !== null) && (
             <>
               <ChatBubble role="assistant">
-                검색될 만한 키워드도 몇 개 정해볼까요? AI 추천을 받아 바로 담을 수 있어요.
+                한 달에 광고비를 얼마 정도 쓸 수 있을까요? 하루 기준 금액으로 나눠서 집행돼요.
               </ChatBubble>
-              {step === "keywords" ? (
-                <KeywordAssistant
-                  objective={objective!}
-                  channels={channels}
-                  industry={industry!}
-                  name={name.trim()}
-                  selected={keywords}
-                  onChange={setKeywords}
-                  onBidsChange={setKeywordBids}
-                  onBudgetEstimate={setBudgetSuggestion}
-                  onConfirm={() => {
-                    setKeywordsConfirmed(true);
-                    setStep("budget");
-                  }}
-                />
-              ) : (
-                keywordsConfirmed && (
-                  <ChatBubble role="user" onClick={() => setStep("keywords")}>
-                    {keywords.length > 0 ? keywords.join(", ") : "키워드 없이 진행할게요"}
-                  </ChatBubble>
-                )
-              )}
-            </>
-          )}
-
-          {channelsConfirmed && keywordsConfirmed && (["budget", "age", "gender", "review"].includes(step) || budget !== null) && (
-            <>
-              <ChatBubble role="assistant">하루 예산은 얼마로 할까요?</ChatBubble>
               {step === "budget" ? (
-                <div className="flex flex-col gap-2">
-                  {budgetSuggestion !== null && budgetSuggestion > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBudget(budgetSuggestion);
-                        setStep("age");
-                      }}
-                      className="flex items-center gap-1.5 self-start rounded-[var(--radius-full)] border border-[var(--color-blue-500)] bg-[var(--color-blue-50)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-blue-600)]"
-                    >
-                      <Badge tone="blue">AI 추천</Badge>
-                      선택한 키워드 기준 일 {formatKRW(budgetSuggestion)}원
-                    </button>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {BUDGET_PRESETS.map((b) => (
+                <div css={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <div css={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {BUDGET_TIERS.map((tier) => (
                       <button
-                        key={b}
+                        key={tier.daily}
                         type="button"
                         onClick={() => {
-                          setBudget(b);
-                          setStep("age");
+                          setBudget(tier.daily);
+                          setStep("ranking");
                         }}
-                        className="rounded-[var(--radius-full)] border border-[var(--border-subtle)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-gray-700)] hover:border-[var(--color-blue-500)] hover:text-[var(--color-blue-600)]"
+                        css={tierButtonStyle}
                       >
-                        {formatKRW(b)}원
+                        <span css={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: 13, fontWeight: 600, color: "var(--color-gray-900)" }}>
+                          {tier.label}
+                          {tier.recommended && <Badge tone="blue">추천</Badge>}
+                        </span>
+                        <span css={{ fontSize: 12, color: "var(--color-gray-600)" }}>
+                          하루 {formatKRW(tier.daily)}원 · 월 약 {formatKRW(tier.daily * 30)}원
+                        </span>
+                        <span css={{ fontSize: 11, color: "var(--color-gray-500)" }}>{tier.note}</span>
                       </button>
                     ))}
                   </div>
-                  <div className="flex gap-2">
-                    <input
-                      value={budgetDraft}
-                      onChange={(e) => setBudgetDraft(e.target.value.replace(/[^0-9]/g, ""))}
-                      placeholder="직접 입력"
-                      inputMode="numeric"
-                      className="flex-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--color-gray-50)] px-3.5 py-2.5 text-[14px] outline-none focus:border-[var(--color-blue-500)]"
-                    />
-                    <Button
-                      size="md"
-                      variant="secondary"
-                      disabled={!budgetDraft}
-                      onClick={() => {
-                        setBudget(Number(budgetDraft));
-                        setStep("age");
-                      }}
-                    >
-                      확인
-                    </Button>
+                  <div css={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <div css={{ display: "flex", gap: "0.5rem" }}>
+                      <input
+                        value={budgetDraft}
+                        onChange={(e) => setBudgetDraft(e.target.value.replace(/[^0-9]/g, ""))}
+                        placeholder="하루 예산 직접 입력"
+                        inputMode="numeric"
+                        css={inputStyle}
+                      />
+                      <Button
+                        size="md"
+                        variant="secondary"
+                        disabled={!budgetDraft}
+                        onClick={() => {
+                          setBudget(Number(budgetDraft));
+                          setStep("ranking");
+                        }}
+                      >
+                        확인
+                      </Button>
+                    </div>
+                    {budgetDraft && (
+                      <span css={{ fontSize: 11, color: "var(--color-gray-400)" }}>
+                        월 약 {formatKRW(Number(budgetDraft) * 30)}원 정도예요
+                      </span>
+                    )}
                   </div>
                 </div>
               ) : (
-                budget && (
+                budget !== null && (
                   <ChatBubble role="user" onClick={() => setStep("budget")}>
-                    {formatKRW(budget)}원
+                    하루 {formatKRW(budget)}원 (월 약 {formatKRW(budget * 30)}원)
                   </ChatBubble>
                 )
               )}
             </>
           )}
 
-          {budget && (
+          {budget !== null && (["ranking", "keywords", "age", "gender", "review"].includes(step) || targetPosition !== null) && (
+            <>
+              <ChatBubble role="assistant">광고가 검색했을 때 어느 정도 위치에 뜨면 좋을까요?</ChatBubble>
+              {step === "ranking" ? (
+                <div css={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                  {RANKING_TIERS.map((tier) => (
+                    <button
+                      key={tier.position}
+                      type="button"
+                      onClick={() => {
+                        setTargetPosition(tier.position);
+                        setStep("keywords");
+                      }}
+                      css={tierButtonStyle}
+                    >
+                      <span css={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: 13, fontWeight: 600, color: "var(--color-gray-900)" }}>
+                        {tier.label}
+                        {tier.recommended && <Badge tone="blue">추천</Badge>}
+                      </span>
+                      <span css={{ fontSize: 11, color: "var(--color-gray-500)" }}>{tier.note}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                targetPosition !== null && (
+                  <ChatBubble role="user" onClick={() => setStep("ranking")}>
+                    {RANKING_TIERS.find((t) => t.position === targetPosition)?.label}
+                  </ChatBubble>
+                )
+              )}
+            </>
+          )}
+
+          {budget !== null &&
+            targetPosition !== null &&
+            (["keywords", "age", "gender", "review"].includes(step) || keywordsConfirmed) && (
+              <>
+                <ChatBubble role="assistant">
+                  예산과 순위에 맞춰 키워드를 골라볼게요. 핵심 키워드를 알려주시면 AI가 자동으로 담아드려요.
+                </ChatBubble>
+                {step === "keywords" ? (
+                  <KeywordAssistant
+                    objective={objective!}
+                    channels={channels}
+                    industry={industry!}
+                    name={name.trim()}
+                    selected={keywords}
+                    onChange={setKeywords}
+                    onBidsChange={setKeywordBids}
+                    dailyBudget={budget}
+                    targetPosition={targetPosition}
+                    onConfirm={() => {
+                      setKeywordsConfirmed(true);
+                      setStep("age");
+                    }}
+                  />
+                ) : (
+                  keywordsConfirmed && (
+                    <ChatBubble role="user" onClick={() => setStep("keywords")}>
+                      {keywords.length > 0 ? keywords.join(", ") : "키워드 없이 진행할게요"}
+                    </ChatBubble>
+                  )
+                )}
+              </>
+            )}
+
+          {keywordsConfirmed && (
             <>
               <ChatBubble role="assistant">주요 타겟 연령대는요?</ChatBubble>
               {step === "age" ? (
@@ -349,13 +442,13 @@ export default function NewCampaignPage() {
         </div>
       </Card>
 
-      <div className="lg:sticky lg:top-6">
+      <div css={css`@media (min-width: 1024px) { position: sticky; top: 1.5rem; }`}>
         <Card>
-          <p className="mb-3 text-[13px] font-semibold text-[var(--color-gray-500)]">미리보기</p>
-          <p className="mb-3 text-[16px] font-bold text-[var(--color-gray-900)]">
+          <p css={{ marginBottom: "0.75rem", fontSize: 13, fontWeight: 600, color: "var(--color-gray-500)" }}>미리보기</p>
+          <p css={{ marginBottom: "0.75rem", fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>
             {name.trim() || suggestedName || "새 캠페인"}
           </p>
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div css={{ marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
             {industry && <Badge tone="gray">{INDUSTRY_LABEL[industry]}</Badge>}
             {objective && <Badge tone="blue">{OBJECTIVE_LABEL[objective]}</Badge>}
             {channels.map((c) => (
@@ -366,14 +459,14 @@ export default function NewCampaignPage() {
             {age && <Badge tone="gray">{age}</Badge>}
             {gender && <Badge tone="gray">{gender === "all" ? "전체 성별" : gender === "male" ? "남성" : "여성"}</Badge>}
           </div>
-          <div className="rounded-[var(--radius-sm)] bg-[var(--color-gray-50)] p-3.5">
-            <p className="text-[12px] text-[var(--color-gray-500)]">일 예산</p>
-            <p className="text-[20px] font-bold text-[var(--color-gray-900)]">
+          <div css={css`border-radius: var(--radius-sm); background-color: var(--color-gray-50); padding: 0.875rem;`}>
+            <p css={{ fontSize: 12, color: "var(--color-gray-500)" }}>일 예산</p>
+            <p css={{ fontSize: 20, fontWeight: 700, color: "var(--color-gray-900)" }}>
               {budget ? `${formatKRW(budget)}원` : "-"}
             </p>
           </div>
           {keywords.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div css={{ marginTop: "0.75rem", display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
               {keywords.map((k) => (
                 <Badge key={k} tone="blue">
                   {k}
@@ -381,11 +474,7 @@ export default function NewCampaignPage() {
               ))}
             </div>
           )}
-          <Button
-            className="mt-4 w-full"
-            disabled={step !== "review"}
-            onClick={createCampaign}
-          >
+          <Button css={{ marginTop: "1rem", width: "100%" }} disabled={step !== "review"} onClick={createCampaign}>
             캠페인 만들기
           </Button>
         </Card>
@@ -402,16 +491,11 @@ function ChipGroup({
   onSelect: (key: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div css={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
       {items.map((item) => (
-        <button
-          key={item.key}
-          type="button"
-          onClick={() => onSelect(item.key)}
-          className="flex flex-col rounded-[var(--radius-md)] border border-[var(--border-subtle)] px-3.5 py-2.5 text-left transition-colors hover:border-[var(--color-blue-500)] hover:bg-[var(--color-blue-50)]"
-        >
-          <span className="text-[13px] font-semibold text-[var(--color-gray-900)]">{item.label}</span>
-          {item.desc && <span className="text-[11px] text-[var(--color-gray-500)]">{item.desc}</span>}
+        <button key={item.key} type="button" onClick={() => onSelect(item.key)} css={tierButtonStyle}>
+          <span css={{ fontSize: 13, fontWeight: 600, color: "var(--color-gray-900)" }}>{item.label}</span>
+          {item.desc && <span css={{ fontSize: 11, color: "var(--color-gray-500)" }}>{item.desc}</span>}
         </button>
       ))}
     </div>
@@ -428,7 +512,7 @@ function MultiChipGroup({
   onToggle: (key: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div css={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
       {items.map((item) => {
         const active = selected.includes(item.key);
         return (
@@ -437,22 +521,35 @@ function MultiChipGroup({
             type="button"
             onClick={() => onToggle(item.key)}
             aria-pressed={active}
-            className={cn(
-              "flex flex-col rounded-[var(--radius-md)] border px-3.5 py-2.5 text-left transition-colors",
-              active
-                ? "border-[var(--color-blue-500)] bg-[var(--color-blue-50)]"
-                : "border-[var(--border-subtle)] hover:border-[var(--color-blue-500)] hover:bg-[var(--color-blue-50)]"
-            )}
+            css={css`
+              display: flex;
+              flex-direction: column;
+              border-radius: var(--radius-md);
+              border: 1px solid ${active ? "var(--color-blue-500)" : "var(--border-subtle)"};
+              background-color: ${active ? "var(--color-blue-50)" : "transparent"};
+              padding: 0.625rem 0.875rem;
+              text-align: left;
+              transition: border-color 150ms, background-color 150ms;
+
+              ${!active &&
+              `
+                &:hover {
+                  border-color: var(--color-blue-500);
+                  background-color: var(--color-blue-50);
+                }
+              `}
+            `}
           >
             <span
-              className={cn(
-                "text-[13px] font-semibold",
-                active ? "text-[var(--color-blue-600)]" : "text-[var(--color-gray-900)]"
-              )}
+              css={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: active ? "var(--color-blue-600)" : "var(--color-gray-900)",
+              }}
             >
               {item.label}
             </span>
-            {item.desc && <span className="text-[11px] text-[var(--color-gray-500)]">{item.desc}</span>}
+            {item.desc && <span css={{ fontSize: 11, color: "var(--color-gray-500)" }}>{item.desc}</span>}
           </button>
         );
       })}

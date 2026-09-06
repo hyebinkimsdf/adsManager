@@ -1,10 +1,13 @@
+/** @jsxImportSource @emotion/react */
 "use client";
 
+import { css } from "@emotion/react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { HiCheck } from "react-icons/hi2";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { cn } from "@/lib/cn";
+import { closeAssistantDock } from "@/lib/ui/assistantDock";
 import type { AssistantAction } from "@/lib/ai/types";
 
 const riskLabel: Record<AssistantAction["riskLevel"], { label: string; tone: "gray" | "blue" | "red" }> = {
@@ -22,16 +25,27 @@ export function ActionProposalCard({
 }) {
   const [status, setStatus] = useState<"pending" | "applied" | "dismissed">("pending");
   const risk = riskLabel[action.riskLevel];
+  const router = useRouter();
+  const isNavigateAction = action.type === "open_keyword_tool";
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white p-3.5">
-      <div className="mb-1.5 flex items-center gap-2">
-        <span className="text-[13px] font-semibold text-[var(--color-gray-900)]">{action.label}</span>
+    <div
+      css={css`
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-subtle);
+        background: white;
+        padding: 0.875rem;
+      `}
+    >
+      <div css={{ marginBottom: "0.375rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <span css={{ fontSize: 13, fontWeight: 600, color: "var(--color-gray-900)" }}>{action.label}</span>
         <Badge tone={risk.tone}>{risk.label}</Badge>
       </div>
-      <p className="mb-3 text-[13px] leading-relaxed text-[var(--color-gray-600)]">{action.description}</p>
+      <p css={{ marginBottom: "0.75rem", fontSize: 13, lineHeight: 1.6, color: "var(--color-gray-600)" }}>
+        {action.description}
+      </p>
       {action.keywords && action.keywords.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-1.5">
+        <div css={{ marginBottom: "0.75rem", display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
           {action.keywords.map((k) => (
             <Badge key={k} tone="blue">
               {k}
@@ -40,30 +54,44 @@ export function ActionProposalCard({
         </div>
       )}
       {status === "pending" && (
-        <div className="flex gap-2">
+        <div css={{ display: "flex", gap: "0.5rem" }}>
           <Button
             size="sm"
             variant="primary"
             onClick={() => {
+              if (isNavigateAction && action.campaignId) {
+                closeAssistantDock();
+                router.push(`/campaigns/${action.campaignId}`);
+                return;
+              }
               onApply(action);
               setStatus("applied");
             }}
           >
-            적용
+            {isNavigateAction ? "키워드 도구 열기" : "적용"}
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => setStatus("dismissed")}>
-            무시
-          </Button>
+          {!isNavigateAction && (
+            <Button size="sm" variant="ghost" onClick={() => setStatus("dismissed")}>
+              무시
+            </Button>
+          )}
         </div>
       )}
       {status === "applied" && (
-        <p className={cn("flex items-center gap-1 text-[13px] font-medium text-[var(--color-green-600)]")}>
-          <HiCheck className="h-4 w-4" aria-hidden="true" /> 적용했어요
+        <p
+          css={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.25rem",
+            fontSize: 13,
+            fontWeight: 500,
+            color: "var(--color-green-600)",
+          }}
+        >
+          <HiCheck style={{ height: "1rem", width: "1rem" }} aria-hidden="true" /> 적용했어요
         </p>
       )}
-      {status === "dismissed" && (
-        <p className="text-[13px] text-[var(--color-gray-400)]">무시했어요</p>
-      )}
+      {status === "dismissed" && <p css={{ fontSize: 13, color: "var(--color-gray-400)" }}>무시했어요</p>}
     </div>
   );
 }
