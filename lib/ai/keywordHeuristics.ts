@@ -1,5 +1,9 @@
 import type { CampaignIndustry, CampaignObjective } from "../mock/types";
 
+// 업종·목표에 상관없이 광고 대행사가 메인 키워드 뒤에 흔히 붙이는 범용 수식어.
+// "필라테스" + 이 목록 = "필라테스 위치", "필라테스 가격" 같은 서브(롱테일) 키워드가 된다.
+export const GENERIC_MODIFIERS = ["위치", "가격", "상담", "후기", "예약", "추천", "비교", "근처"];
+
 export const OBJECTIVE_TAILS: Record<CampaignObjective, string[]> = {
   conversion: ["가격", "구매", "할인"],
   traffic: ["후기", "정보", "비교"],

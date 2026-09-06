@@ -25,12 +25,15 @@ function isMeaningfulToken(token: string): boolean {
   return /[가-힣a-zA-Z0-9]/.test(token);
 }
 
-// 사용자가 직접 입력한 캠페인 이름(비어있을 수 있음)에서 의미 있는 단어만 골라
-// 업종 시드 키워드와 합쳐 네이버 키워드도구 hintKeywords를 구성한다.
-export function buildSeedKeywords(input: KeywordPromptInput): string[] {
-  const nameTokens = Array.from(new Set(input.name.trim().split(/\s+/).filter(isMeaningfulToken))).slice(0, 4);
-  // 업종 시드는 이름에서 유의미한 단어를 못 찾았을 때의 최후 폴백이 아니라, 항상 포함되도록 보장한다.
-  return Array.from(new Set([...nameTokens, INDUSTRY_SEED_KEYWORD[input.industry]]));
+// 사용자가 직접 입력한 핵심 키워드를 메인 키워드로 삼는다. 없을 때는 캠페인 이름 → 업종 시드 순으로 폴백한다.
+export function getMainKeyword(input: KeywordPromptInput): string {
+  const core = input.coreKeyword?.trim();
+  if (core && isMeaningfulToken(core.replace(/\s+/g, ""))) return core;
+
+  const nameTokens = input.name.trim().split(/\s+/).filter(isMeaningfulToken);
+  if (nameTokens.length > 0) return nameTokens.join(" ");
+
+  return INDUSTRY_SEED_KEYWORD[input.industry];
 }
 
 function toMatchType(competition: NaverKeywordStatDto["competition"]): KeywordMatchType {
@@ -43,14 +46,19 @@ export async function fetchNaverKeywordSuggestions(
   input: KeywordPromptInput,
   options?: { limit?: number }
 ): Promise<KeywordSuggestion[] | null> {
-  const seedKeywords = buildSeedKeywords(input);
-  if (seedKeywords.length === 0) return null;
+  const mainKeyword = getMainKeyword(input);
+  if (!mainKeyword) return null;
 
   try {
     const res = await fetch("/api/keywords/naver", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ seedKeywords, limit: options?.limit }),
+      body: JSON.stringify({
+        mainKeyword,
+        industry: input.industry,
+        objective: input.objective,
+        limit: options?.limit,
+      }),
     });
     if (!res.ok) return null;
 

@@ -139,6 +139,47 @@ export async function fetchRelatedKeywords(seedKeywords: string[]): Promise<Nave
     });
 }
 
+// hintKeywords는 "연관 키워드 발굴"용 API지만, 물어본 문구 자체가 네이버에 검색 이력이 있으면
+// 그 문구 그대로도 결과 목록에 포함해서 돌려준다. 이를 이용해 우리가 직접 조합한 키워드
+// (메인 키워드 + 위치/가격/상담 등 수식어)의 정확한 검색량·경쟁도를 조회한다.
+export async function fetchExactKeywordStats(keywords: string[]): Promise<Map<string, NaverKeywordStat>> {
+  const normalized = Array.from(new Set(keywords.map((k) => k.replace(/\s+/g, "")).filter(Boolean)));
+  const map = new Map<string, NaverKeywordStat>();
+  if (normalized.length === 0) return map;
+
+  const batches: string[][] = [];
+  for (let i = 0; i < normalized.length; i += MAX_HINT_KEYWORDS) {
+    batches.push(normalized.slice(i, i + MAX_HINT_KEYWORDS));
+  }
+
+  const responses = await Promise.all(
+    batches.map((batch) =>
+      naverRequest<{ keywordList?: NaverKeywordToolItem[] }>(
+        "GET",
+        KEYWORD_TOOL_PATH,
+        `hintKeywords=${encodeURIComponent(batch.join(","))}&showDetail=1`
+      ).catch(() => ({ keywordList: [] as NaverKeywordToolItem[] }))
+    )
+  );
+
+  for (const data of responses) {
+    for (const item of data.keywordList ?? []) {
+      if (!item.relKeyword || !normalized.includes(item.relKeyword)) continue;
+      const pc = parseCount(item.monthlyPcQcCnt);
+      const mobile = parseCount(item.monthlyMobileQcCnt);
+      map.set(item.relKeyword, {
+        keyword: item.relKeyword,
+        monthlyPcSearches: pc,
+        monthlyMobileSearches: mobile,
+        monthlySearches: pc + mobile,
+        competition: COMPETITION_MAP[item.compIdx ?? ""] ?? "unknown",
+        monthlyAdCount: parseCount(item.plAvgDepth),
+      });
+    }
+  }
+  return map;
+}
+
 interface NaverBidEstimateItem {
   keyword: string;
   bid: number;
