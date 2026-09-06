@@ -160,7 +160,11 @@ export function KeywordAssistant({
   targetPosition?: number;
 }) {
   const { state, downloadProgress, suggest } = useKeywordAssistant();
-  const [kwStep, setKwStep] = useState<"core" | "scale" | "review">("core");
+  // 이미 저장된 키워드를 가지고 마운트되면(예: 캠페인 상세 페이지) 처음부터 다시 물어보지 않고
+  // 바로 review 단계로 보여준다. 완전히 새로 만드는 캠페인은 selected가 비어 있어 core부터 시작한다.
+  const [kwStep, setKwStep] = useState<"core" | "scale" | "review">(
+    selected.length > 0 ? "review" : "core"
+  );
   const [draft, setDraft] = useState("");
   const [bids, setBids] = useState<Record<string, number>>({});
   const [positionCost, setPositionCost] = useState<Record<string, { clicks: number; cost: number }>>({});
@@ -387,8 +391,14 @@ export function KeywordAssistant({
     return { cost, clicks, count: rows.length, status };
   })();
 
+  // 캠페인 생성 마법사에서 이어져 오는 대화 흐름일 때만 보여준다. 이미 선택된 키워드를 가지고
+  // 조용히 review로 시작한 경우(예: 캠페인 상세 페이지)에는 매번 처음부터 물어보지 않는다.
+  const showWizardTrail = kwStep !== "review" || hasAsked;
+
   return (
     <div css={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+      {showWizardTrail && (
+        <>
       <ChatBubble role="assistant">핵심 키워드가 뭔가요?</ChatBubble>
       {kwStep === "core" ? (
         <div css={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
@@ -466,14 +476,18 @@ export function KeywordAssistant({
           )}
         </>
       )}
+        </>
+      )}
 
       {kwStep === "review" && (
         <>
-          <ChatBubble role="assistant">
-            {loading
-              ? "키워드를 준비하고 있어요..."
-              : "예산과 순위에 맞게 키워드를 담아봤어요. 필요하면 빼거나 더해주세요."}
-          </ChatBubble>
+          {showWizardTrail && (
+            <ChatBubble role="assistant">
+              {loading
+                ? "키워드를 준비하고 있어요..."
+                : "예산과 순위에 맞게 키워드를 담아봤어요. 필요하면 빼거나 더해주세요."}
+            </ChatBubble>
+          )}
 
           <div
             css={css`
@@ -517,6 +531,28 @@ export function KeywordAssistant({
                   </button>
                 </div>
               </div>
+            )}
+
+            {!loading && suggestions.length === 0 && !hasAsked && (
+              <button
+                type="button"
+                onClick={() => setKwStep("core")}
+                css={css`
+                  display: flex;
+                  align-items: center;
+                  gap: 0.25rem;
+                  align-self: flex-start;
+                  font-size: 12px;
+                  font-weight: 500;
+                  color: var(--color-blue-600);
+                  &:hover {
+                    text-decoration: underline;
+                  }
+                `}
+              >
+                <HiSparkles style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
+                AI로 새로 추천받기
+              </button>
             )}
 
             {hasAsked && !loading && engine === "naver-ads" && (
