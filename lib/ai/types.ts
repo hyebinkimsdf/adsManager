@@ -4,7 +4,6 @@ export type ActionType =
   | "adjust_budget"
   | "pause_campaign"
   | "resume_campaign"
-  | "update_targeting"
   | "open_keyword_tool"
   | "adjust_keyword_bids"
   | "info";

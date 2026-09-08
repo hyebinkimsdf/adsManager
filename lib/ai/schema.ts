@@ -24,7 +24,6 @@ export const ASSISTANT_RESPONSE_SCHEMA = {
               "adjust_budget",
               "pause_campaign",
               "resume_campaign",
-              "update_targeting",
               "open_keyword_tool",
               "info",
             ],

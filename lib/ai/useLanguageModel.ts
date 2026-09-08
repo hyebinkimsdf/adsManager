@@ -137,13 +137,15 @@ export function useLanguageModel(): UseLanguageModelResult {
             return parsed;
           })();
           // 모델 다운로드가 안 끝났거나 응답이 지연되면 오래 기다리지 않고 다음 단계로 넘어간다.
-          const timeout = new Promise<null>((resolve) =>
-            setTimeout(() => {
+          let onDeviceTimeoutId: ReturnType<typeof setTimeout>;
+          const timeout = new Promise<null>((resolve) => {
+            onDeviceTimeoutId = setTimeout(() => {
               console.warn("[assistant] 온디바이스 응답 6초 타임아웃");
               resolve(null);
-            }, 6000)
-          );
+            }, 6000);
+          });
           const parsed = await Promise.race([onDevice, timeout]);
+          clearTimeout(onDeviceTimeoutId!);
           if (parsed) return { reply: parsed, engine: "on-device" };
         } catch (err) {
           console.warn("[assistant] 온디바이스 호출 중 에러, 클라우드로 폴백:", err);
@@ -154,8 +156,12 @@ export function useLanguageModel(): UseLanguageModelResult {
       try {
         const cloud = fetchGeminiReply(message, campaigns);
         // Gemini 쪽에서 과부하 재시도가 있을 수 있어 온디바이스보다 여유 있게 기다린다.
-        const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 12000));
+        let cloudTimeoutId: ReturnType<typeof setTimeout>;
+        const timeout = new Promise<null>((resolve) => {
+          cloudTimeoutId = setTimeout(() => resolve(null), 12000);
+        });
         const parsed = await Promise.race([cloud, timeout]);
+        clearTimeout(cloudTimeoutId!);
         if (parsed) return { reply: parsed, engine: "cloud" };
         console.warn("[assistant] 클라우드(Gemini) 응답 없음, 미리보기로 폴백");
       } catch (err) {
