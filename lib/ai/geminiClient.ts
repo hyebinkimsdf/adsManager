@@ -1,5 +1,7 @@
 import { SYSTEM_PROMPT, buildUserTurn } from "./systemPrompt";
 import { ASSISTANT_RESPONSE_SCHEMA } from "./schema";
+import { WEEKLY_ANALYSIS_SYSTEM_PROMPT, buildWeeklyAnalysisUserTurn, type WeeklyCampaignInput } from "./weeklyAnalysisPrompt";
+import { WEEKLY_ANALYSIS_RESPONSE_SCHEMA, type WeeklyAnalysisReply } from "./weeklyAnalysisSchema";
 import type { AssistantReply } from "./types";
 
 const DEFAULT_MODEL = "gemini-flash-latest";
@@ -81,6 +83,35 @@ export async function generateGeminiReply(
   const parsed = JSON.parse(text);
   if (parsed && typeof parsed.reply === "string" && Array.isArray(parsed.actions)) {
     return parsed as AssistantReply;
+  }
+  return null;
+}
+
+export async function generateWeeklyAnalysisReply(campaigns: WeeklyCampaignInput[]): Promise<WeeklyAnalysisReply | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const res = await callGemini(model, apiKey, {
+    systemInstruction: { parts: [{ text: WEEKLY_ANALYSIS_SYSTEM_PROMPT }] },
+    contents: [{ role: "user", parts: [{ text: buildWeeklyAnalysisUserTurn(campaigns) }] }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: toGeminiSchema(WEEKLY_ANALYSIS_RESPONSE_SCHEMA),
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Gemini API 오류 (${res.status})`);
+  }
+
+  const data = (await res.json()) as GeminiGenerateContentResponse;
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) return null;
+
+  const parsed = JSON.parse(text);
+  if (parsed && Array.isArray(parsed.recommendations) && Array.isArray(parsed.spotlights)) {
+    return parsed as WeeklyAnalysisReply;
   }
   return null;
 }

@@ -18,9 +18,11 @@ import type { IconType } from "react-icons";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LineChart } from "@/components/dashboard/LineChart";
+import { EngineBadge } from "@/components/dashboard/EngineBadge";
 import { adjustBudgetByPercent } from "@/lib/mock/store";
 import { formatSignedPercent } from "@/lib/format";
 import type { CampaignSpotlight } from "@/lib/insights";
+import type { EngineKind } from "@/lib/ai/types";
 
 type ApplyState = "idle" | "pending" | "done" | "error";
 
@@ -104,14 +106,25 @@ function SpotlightAction({ spotlight }: { spotlight: CampaignSpotlight }) {
   );
 }
 
-export function CampaignSpotlightCards({ spotlights }: { spotlights: CampaignSpotlight[] }) {
+export function CampaignSpotlightCards({
+  spotlights,
+  engine,
+  analyzing,
+}: {
+  spotlights: CampaignSpotlight[];
+  engine: EngineKind | null;
+  analyzing?: boolean;
+}) {
   if (spotlights.length === 0) return null;
 
   return (
     <div>
       <div css={{ marginBottom: "0.875rem", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "0.75rem" }}>
         <div>
-          <h2 css={{ fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>캠페인 한눈에 보기</h2>
+          <div css={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <h2 css={{ fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>캠페인 한눈에 보기</h2>
+            <EngineBadge engine={engine} analyzing={analyzing} />
+          </div>
           <p css={{ marginTop: "0.125rem", fontSize: 13, color: "var(--color-gray-500)" }}>
             AI가 주요 캠페인 중 가장 주목할 만한 {spotlights.length}개를 골랐어요.
           </p>

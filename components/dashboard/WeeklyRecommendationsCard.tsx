@@ -17,9 +17,11 @@ import {
 import type { IconType } from "react-icons";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { EngineBadge } from "@/components/dashboard/EngineBadge";
 import { adjustBudgetByPercent, adjustKeywordBidsByPercent } from "@/lib/mock/store";
 import { openAssistantDock } from "@/lib/ui/assistantDock";
 import type { WeeklyRecommendation } from "@/lib/insights";
+import type { EngineKind } from "@/lib/ai/types";
 
 const TONE: Record<WeeklyRecommendation["tone"], { bg: string; color: string; icon: IconType }> = {
   warning: { bg: "var(--color-red-50)", color: "var(--color-red-500)", icon: HiArrowTrendingDown },
@@ -30,11 +32,19 @@ const TONE: Record<WeeklyRecommendation["tone"], { bg: string; color: string; ic
 type ApplyState = "idle" | "pending" | "done" | "error";
 
 async function applyRecommendation(item: WeeklyRecommendation) {
-  if (item.kind === "lower_bid") await adjustKeywordBidsByPercent(item.campaignId, -20);
-  if (item.kind === "raise_budget") await adjustBudgetByPercent(item.campaignId, 15);
+  if (item.kind === "lower_bid") await adjustKeywordBidsByPercent(item.campaignId, item.percent);
+  if (item.kind === "raise_budget") await adjustBudgetByPercent(item.campaignId, item.percent);
 }
 
-export function WeeklyRecommendationsCard({ items }: { items: WeeklyRecommendation[] }) {
+export function WeeklyRecommendationsCard({
+  items,
+  engine,
+  analyzing,
+}: {
+  items: WeeklyRecommendation[];
+  engine: EngineKind | null;
+  analyzing?: boolean;
+}) {
   const [state, setState] = useState<Record<string, ApplyState>>({});
   const [errorMessage, setErrorMessage] = useState<Record<string, string>>({});
 
@@ -73,9 +83,12 @@ export function WeeklyRecommendationsCard({ items }: { items: WeeklyRecommendati
             <HiSparkles style={{ height: "1rem", width: "1rem", color: "var(--color-blue-500)" }} aria-hidden="true" />
           </span>
           <div>
-            <p css={{ fontSize: 15, fontWeight: 700, color: "var(--color-gray-900)" }}>
-              AI가 찾은 이번 주 추천 액션 <span css={{ color: "var(--color-gray-400)", fontWeight: 500 }}>{items.length}개</span>
-            </p>
+            <div css={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              <p css={{ fontSize: 15, fontWeight: 700, color: "var(--color-gray-900)" }}>
+                AI가 찾은 이번 주 추천 액션 <span css={{ color: "var(--color-gray-400)", fontWeight: 500 }}>{items.length}개</span>
+              </p>
+              <EngineBadge engine={engine} analyzing={analyzing} />
+            </div>
             <p css={{ marginTop: "0.125rem", fontSize: 13, color: "var(--color-gray-500)" }}>
               지금 이 {items.length}가지만 실행하면 더 좋은 결과를 만들 수 있어요.
             </p>
