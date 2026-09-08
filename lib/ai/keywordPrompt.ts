@@ -17,17 +17,18 @@ export interface KeywordPromptInput {
   channels: CampaignChannel[];
   industry: CampaignIndustry;
   name: string;
-  /** 사용자가 직접 입력한 핵심 키워드. 지정되면 이를 기준으로 키워드를 확장한다. */
-  coreKeyword?: string;
+  /** 사용자가 직접 입력한 핵심 키워드(들). 지정되면 이를 기준으로 키워드를 확장한다. */
+  coreKeywords?: string[];
 }
 
 export function buildKeywordUserTurn(input: KeywordPromptInput): string {
+  const coreKeywords = (input.coreKeywords ?? []).map((k) => k.trim()).filter(Boolean);
   return `[캠페인 정보]
 업종: ${INDUSTRY_LABEL[input.industry]}
 목표: ${OBJECTIVE_LABEL[input.objective]}
 채널: ${input.channels.map((ch) => CHANNEL_LABEL[ch]).join(", ")}
 이름: ${input.name || "(아직 정하지 않음)"}
-핵심 키워드: ${input.coreKeyword?.trim() || "(지정 안 함)"}
+핵심 키워드: ${coreKeywords.length > 0 ? coreKeywords.join(", ") : "(지정 안 함)"}
 
-이 핵심 키워드를 중심으로 이 캠페인에 사용할 키워드를 추천해주세요. 핵심 키워드와 밀접한 키워드는 tier를 core로, 그로부터 확장된 세부 키워드는 tier를 sub로 표시해주세요.`;
+이 핵심 키워드들을 중심으로 이 캠페인에 사용할 키워드를 추천해주세요. 핵심 키워드와 밀접한 키워드는 tier를 core로, 그로부터 확장된 세부 키워드는 tier를 sub로 표시해주세요.`;
 }

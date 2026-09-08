@@ -25,15 +25,21 @@ function isMeaningfulToken(token: string): boolean {
   return /[가-힣a-zA-Z0-9]/.test(token);
 }
 
-// 사용자가 직접 입력한 핵심 키워드를 메인 키워드로 삼는다. 없을 때는 캠페인 이름 → 업종 시드 순으로 폴백한다.
-export function getMainKeyword(input: KeywordPromptInput): string {
-  const core = input.coreKeyword?.trim();
-  if (core && isMeaningfulToken(core.replace(/\s+/g, ""))) return core;
+// 사용자가 직접 입력한 핵심 키워드(들)을 메인 키워드로 삼는다. 없을 때는 캠페인 이름 → 업종 시드 순으로 폴백한다.
+export function getMainKeywords(input: KeywordPromptInput): string[] {
+  const cores = Array.from(
+    new Set(
+      (input.coreKeywords ?? [])
+        .map((k) => k.trim())
+        .filter((k) => isMeaningfulToken(k.replace(/\s+/g, "")))
+    )
+  );
+  if (cores.length > 0) return cores;
 
   const nameTokens = input.name.trim().split(/\s+/).filter(isMeaningfulToken);
-  if (nameTokens.length > 0) return nameTokens.join(" ");
+  if (nameTokens.length > 0) return [nameTokens.join(" ")];
 
-  return INDUSTRY_SEED_KEYWORD[input.industry];
+  return [INDUSTRY_SEED_KEYWORD[input.industry]];
 }
 
 function toMatchType(competition: NaverKeywordStatDto["competition"]): KeywordMatchType {
@@ -46,15 +52,15 @@ export async function fetchNaverKeywordSuggestions(
   input: KeywordPromptInput,
   options?: { limit?: number }
 ): Promise<KeywordSuggestion[] | null> {
-  const mainKeyword = getMainKeyword(input);
-  if (!mainKeyword) return null;
+  const mainKeywords = getMainKeywords(input);
+  if (mainKeywords.length === 0) return null;
 
   try {
     const res = await fetch("/api/keywords/naver", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        mainKeyword,
+        mainKeywords,
         industry: input.industry,
         objective: input.objective,
         limit: options?.limit,
