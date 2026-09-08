@@ -20,3 +20,15 @@ export function formatSignedPercent(value: number, digits = 1): string {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(digits)}%`;
 }
+
+export function formatMonthDay(date: Date): string {
+  return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+
+export function formatDateRange(start: Date, end: Date): string {
+  const y = start.getFullYear();
+  const sameMonth = start.getMonth() === end.getMonth();
+  const startPart = `${y}. ${start.getMonth() + 1}. ${start.getDate()}.`;
+  const endPart = sameMonth ? `${end.getDate()}.` : `${end.getMonth() + 1}. ${end.getDate()}.`;
+  return `${startPart} ~ ${endPart}`;
+}

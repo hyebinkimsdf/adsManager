@@ -3,33 +3,19 @@
 
 import { css } from "@emotion/react";
 import Link from "next/link";
-import { HiOutlineChartBar, HiOutlineArrowTrendingUp, HiOutlineShoppingCart } from "react-icons/hi2";
 import { useCampaigns } from "@/lib/mock/store";
 import { useUiMode } from "@/lib/ui/mode";
-import { buildInsights, buildSimpleActions } from "@/lib/insights";
+import { buildInsights, buildWeeklyRecommendations, buildCampaignSpotlights, composeWeeklySummary, dailySeries } from "@/lib/insights";
 import { SummaryCard } from "@/components/dashboard/SummaryCard";
-import { SimpleHeader } from "@/components/dashboard/SimpleHeader";
-import { SimpleStat } from "@/components/dashboard/SimpleStat";
-import { SimpleActionCard } from "@/components/dashboard/SimpleActionCard";
-import { SimpleQuickActions } from "@/components/dashboard/SimpleQuickActions";
-import { SimpleCampaignCompare } from "@/components/dashboard/SimpleCampaignCompare";
-import { SimpleAssistantPanel } from "@/components/dashboard/SimpleAssistantPanel";
-import { SimpleTipCard } from "@/components/dashboard/SimpleTipCard";
+import { SimpleWeekHeader } from "@/components/dashboard/SimpleWeekHeader";
+import { WeeklySummaryHighlight } from "@/components/dashboard/WeeklySummaryHighlight";
+import { CampaignSpotlightCards } from "@/components/dashboard/CampaignSpotlightCards";
+import { WeeklyRecommendationsCard } from "@/components/dashboard/WeeklyRecommendationsCard";
+import { CampaignRankingCard } from "@/components/dashboard/CampaignRankingCard";
 import { CampaignListItem } from "@/components/dashboard/CampaignListItem";
 import { Card } from "@/components/ui/Card";
 import { formatCompactKRW, formatNumber, formatPercent } from "@/lib/format";
 import type { Campaign, DayMetric } from "@/lib/mock/types";
-
-function trendCopy(value: number, opts: { up: string; down: string; goodDirection: "up" | "down" }) {
-  if (Math.abs(value) < 1) return { trendPercent: undefined, trendSuffix: undefined, trendTone: "neutral" as const };
-  const isUp = value > 0;
-  const isGood = opts.goodDirection === "up" ? isUp : !isUp;
-  return {
-    trendPercent: value,
-    trendSuffix: isUp ? opts.up : opts.down,
-    trendTone: isGood ? ("positive" as const) : ("negative" as const),
-  };
-}
 
 function combine(campaigns: Campaign[], days: number, key: keyof DayMetric): number {
   return campaigns.reduce((sum, c) => {
@@ -59,94 +45,49 @@ export default function HomePage() {
   const roas7 = last7Spend > 0 ? (last7Revenue / last7Spend) * 100 : 0;
 
   if (mode === "simple") {
-    const simpleActions = buildSimpleActions(campaigns);
-    const monthSpend = combine(campaigns, 14, "spend");
-    const monthClicks = combine(campaigns, 14, "clicks");
-    const monthConversions = combine(campaigns, 14, "conversions");
+    const last7Conversions = combine(campaigns, 7, "conversions");
+    const prevConversions = combine(campaigns, 14, "conversions") - last7Conversions;
+    const spendTrendPct = trend(campaigns, "spend");
+    const conversionsTrendPct = trend(campaigns, "conversions");
+
+    const summary = composeWeeklySummary(spendTrendPct, conversionsTrendPct);
+    const recommendations = buildWeeklyRecommendations(campaigns);
+    const spotlights = buildCampaignSpotlights(campaigns);
+    const conversionSeries = dailySeries(campaigns, 7, "conversions");
+
+    const rangeEnd = new Date();
+    const rangeStart = new Date(rangeEnd);
+    rangeStart.setDate(rangeStart.getDate() - 6);
 
     return (
       <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-        <SimpleHeader />
+        <SimpleWeekHeader healthy={summary.healthy} subtitle={summary.subtitle} rangeStart={rangeStart} rangeEnd={rangeEnd} />
 
-        <div
-          css={css`
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 0.75rem;
-            @media (min-width: 640px) {
-              grid-template-columns: repeat(3, 1fr);
-            }
-          `}
-        >
-          <SimpleStat
-            icon={HiOutlineChartBar}
-            iconBg="var(--color-gray-100)"
-            iconColor="var(--color-gray-700)"
-            label="이번 달 광고비"
-            value={formatCompactKRW(monthSpend)}
-            unit="원"
-            {...trendCopy(trend(campaigns, "spend"), { up: "더 썼어요", down: "절약했어요", goodDirection: "down" })}
-          />
-          <SimpleStat
-            icon={HiOutlineArrowTrendingUp}
-            iconBg="var(--color-blue-50)"
-            iconColor="var(--color-blue-600)"
-            label="전환 수"
-            value={formatNumber(monthClicks)}
-            unit="회"
-            {...trendCopy(trend(campaigns, "clicks"), { up: "늘었어요", down: "줄었어요", goodDirection: "up" })}
-          />
-          <SimpleStat
-            icon={HiOutlineShoppingCart}
-            iconBg="var(--color-green-50)"
-            iconColor="var(--color-green-600)"
-            label="구매 수"
-            value={formatNumber(monthConversions)}
-            unit="건"
-            {...trendCopy(trend(campaigns, "conversions"), { up: "늘었어요", down: "줄었어요", goodDirection: "up" })}
-          />
-        </div>
+        <WeeklySummaryHighlight
+          headline={summary.headline}
+          highlight={summary.highlight}
+          badge={summary.badge}
+          healthy={summary.healthy}
+          spend={{ current: last7Spend, previous: combine(campaigns, 14, "spend") - last7Spend }}
+          conversions={{ current: last7Conversions, previous: prevConversions }}
+          series={conversionSeries}
+        />
 
-        {simpleActions.length > 0 && (
-          <div>
-            <h2 css={{ marginBottom: "0.75rem", fontSize: 15, fontWeight: 700, color: "var(--color-gray-900)" }}>
-              지금 확인해주세요
-            </h2>
-            <div css={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-              {simpleActions.map((item) => (
-                <SimpleActionCard key={item.id} item={item} />
-              ))}
-            </div>
-          </div>
-        )}
+        <CampaignSpotlightCards spotlights={spotlights} />
 
         <div
           css={css`
             display: grid;
             grid-template-columns: 1fr;
             gap: 1rem;
+            align-items: start;
             @media (min-width: 1024px) {
-              grid-template-columns: repeat(3, 1fr);
+              grid-template-columns: 2fr 1fr;
             }
           `}
         >
-          <div
-            css={css`
-              display: flex;
-              flex-direction: column;
-              gap: 1rem;
-              @media (min-width: 1024px) {
-                grid-column: span 2 / span 2;
-              }
-            `}
-          >
-            <SimpleQuickActions campaigns={campaigns} />
-            <SimpleCampaignCompare campaigns={campaigns} />
-          </div>
-          <div css={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <SimpleAssistantPanel />
-            <SimpleTipCard />
-          </div>
+          <WeeklyRecommendationsCard items={recommendations} />
+          <CampaignRankingCard campaigns={campaigns} />
         </div>
       </div>
     );

@@ -32,6 +32,11 @@ export const theme = {
       500: "var(--color-yellow-500)",
       600: "var(--color-yellow-600)",
     },
+    violet: {
+      50: "var(--color-violet-50)",
+      500: "var(--color-violet-500)",
+      600: "var(--color-violet-600)",
+    },
     background: "var(--background)",
     surface: "var(--surface)",
     surfaceMuted: "var(--surface-muted)",

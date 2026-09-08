@@ -1,69 +1,11 @@
-import type { Campaign } from "./mock/types";
-import type { AssistantAction } from "./ai/types";
+import type { Campaign, DayMetric } from "./mock/types";
 import { sumHistory, trendPercent } from "./mock/campaigns";
-import { formatSignedPercent } from "./format";
+import { formatKRW, formatSignedPercent } from "./format";
 
 export interface Insight {
   id: string;
   tone: "positive" | "negative" | "neutral";
   text: string;
-}
-
-export interface SimpleAction {
-  id: string;
-  emoji: string;
-  title: string;
-  detail: string;
-  action: AssistantAction;
-}
-
-/**
- * 간편 모드용 "지금 확인해주세요" 카드 — 전문 용어 없이 원인과 클릭 한 번짜리 조치를 묶어서 보여준다.
- */
-export function buildSimpleActions(campaigns: Campaign[]): SimpleAction[] {
-  const active = campaigns.filter((c) => c.status === "active" && c.targeting.keywords.length > 0);
-  const results: SimpleAction[] = [];
-
-  for (const c of active) {
-    const totals = sumHistory(c.history);
-    const clicksTrend = trendPercent(c.history, "clicks");
-
-    if (totals.roas > 0 && totals.roas < 120) {
-      results.push({
-        id: `bid-down-${c.id}`,
-        emoji: "💸",
-        title: `${c.name}의 키워드 단가를 낮추면 좋겠어요`,
-        detail: "쓴 돈에 비해 결과가 아직 적어요. 단가를 낮추면 돈을 아낄 수 있어요.",
-        action: {
-          id: `simple-bid-down-${c.id}`,
-          type: "adjust_keyword_bids",
-          label: "키워드 단가 10% 낮추기",
-          description: `${c.name}의 키워드 단가를 10% 낮춰요.`,
-          campaignId: c.id,
-          percent: -10,
-          riskLevel: "low",
-        },
-      });
-    } else if (clicksTrend < -15) {
-      results.push({
-        id: `bid-up-${c.id}`,
-        emoji: "📉",
-        title: `${c.name}이 요즘 사람들 눈에 덜 띄고 있어요`,
-        detail: "키워드 단가를 조금 올리면 다시 더 많이 보여질 수 있어요.",
-        action: {
-          id: `simple-bid-up-${c.id}`,
-          type: "adjust_keyword_bids",
-          label: "키워드 단가 10% 올리기",
-          description: `${c.name}의 키워드 단가를 10% 올려요.`,
-          campaignId: c.id,
-          percent: 10,
-          riskLevel: "low",
-        },
-      });
-    }
-  }
-
-  return results.slice(0, 2);
 }
 
 export interface RoasBucket {
@@ -75,53 +17,68 @@ export interface RoasBucket {
   count: number;
 }
 
+export interface RoasBucketSummary {
+  buckets: RoasBucket[];
+  /** 지출 이력이 아직 없어 3단계 분류에서 제외한 캠페인 수 (신규 캠페인 등) */
+  noDataCount: number;
+}
+
 const ROAS_GOOD_THRESHOLD = 250;
 const ROAS_OKAY_THRESHOLD = 120;
 
 /**
  * 간편 모드 캠페인 요약용 — ROAS 기준으로 캠페인을 좋아요/무난해요/아쉬워요 3단계로 나눈다.
+ * 지출 이력이 없는 캠페인은 ROAS가 0으로 계산돼 "아쉬워요"로 잘못 분류되므로 집계에서 제외한다.
  */
-export function buildRoasBuckets(campaigns: Campaign[]): RoasBucket[] {
+export function buildRoasBuckets(campaigns: Campaign[]): RoasBucketSummary {
   const good: Campaign[] = [];
   const okay: Campaign[] = [];
   const bad: Campaign[] = [];
+  let noDataCount = 0;
 
   for (const c of campaigns) {
-    const roas = sumHistory(c.history).roas;
-    if (roas >= ROAS_GOOD_THRESHOLD) good.push(c);
-    else if (roas >= ROAS_OKAY_THRESHOLD) okay.push(c);
+    const totals = sumHistory(c.history);
+    if (totals.spend === 0) {
+      noDataCount += 1;
+      continue;
+    }
+    if (totals.roas >= ROAS_GOOD_THRESHOLD) good.push(c);
+    else if (totals.roas >= ROAS_OKAY_THRESHOLD) okay.push(c);
     else bad.push(c);
   }
 
   const avgRoas = (list: Campaign[]) =>
     list.length === 0 ? 0 : list.reduce((sum, c) => sum + sumHistory(c.history).roas, 0) / list.length;
 
-  return [
-    {
-      key: "good",
-      label: "좋아요!",
-      emoji: "😊",
-      description: "광고 성과가 매우 좋아요! 🎉",
-      avgRoas: avgRoas(good),
-      count: good.length,
-    },
-    {
-      key: "okay",
-      label: "무난해요",
-      emoji: "😐",
-      description: "조금만 더 개선하면 좋아질 거예요.",
-      avgRoas: avgRoas(okay),
-      count: okay.length,
-    },
-    {
-      key: "bad",
-      label: "아쉬워요",
-      emoji: "😞",
-      description: "광고를 개선할 부분이 있어요.",
-      avgRoas: avgRoas(bad),
-      count: bad.length,
-    },
-  ];
+  return {
+    buckets: [
+      {
+        key: "good",
+        label: "좋아요!",
+        emoji: "😊",
+        description: "광고 성과가 매우 좋아요! 🎉",
+        avgRoas: avgRoas(good),
+        count: good.length,
+      },
+      {
+        key: "okay",
+        label: "무난해요",
+        emoji: "😐",
+        description: "조금만 더 개선하면 좋아질 거예요.",
+        avgRoas: avgRoas(okay),
+        count: okay.length,
+      },
+      {
+        key: "bad",
+        label: "아쉬워요",
+        emoji: "😞",
+        description: "광고를 개선할 부분이 있어요.",
+        avgRoas: avgRoas(bad),
+        count: bad.length,
+      },
+    ],
+    noDataCount,
+  };
 }
 
 export function buildInsights(campaigns: Campaign[]): Insight[] {
@@ -163,4 +120,256 @@ export function buildInsights(campaigns: Campaign[]): Insight[] {
   }
 
   return insights.slice(0, 2);
+}
+
+/**
+ * 최근 `days`일간 캠페인 전체를 합산한 일별 시계열. history는 날짜 인덱스가 캠페인 간 동일하게 정렬돼 있어
+ * 인덱스 기준으로 그대로 더할 수 있다.
+ */
+export function dailySeries(campaigns: Campaign[], days: number, key: keyof DayMetric): number[] {
+  const series = new Array(days).fill(0) as number[];
+  for (const c of campaigns) {
+    const slice = c.history.slice(-days);
+    slice.forEach((d, i) => {
+      series[i] += d[key] as number;
+    });
+  }
+  return series;
+}
+
+export interface WeeklyRecommendation {
+  id: string;
+  tone: "warning" | "positive" | "info";
+  title: string;
+  detail: string;
+  buttonLabel: string;
+  impactLabel: string;
+  impactValue: string;
+  campaignId: string;
+  kind: "lower_bid" | "raise_budget" | "focus_target";
+}
+
+/**
+ * 메인 대시보드 "이번 주 추천 액션" 카드용 — 최근 7일 데이터에서 바로 실행 가능한 액션 최대 3개를 뽑는다.
+ */
+export function buildWeeklyRecommendations(campaigns: Campaign[]): WeeklyRecommendation[] {
+  const active = campaigns.filter((c) => c.status === "active");
+  const withTotals = active
+    .map((c) => ({ c, totals: sumHistory(c.history.slice(-7)) }))
+    .filter((w) => w.totals.spend > 0);
+  const results: WeeklyRecommendation[] = [];
+
+  const worst = [...withTotals].sort((a, b) => a.totals.roas - b.totals.roas)[0];
+  if (worst && worst.totals.roas < 150) {
+    const keywordCount = Math.max(1, Math.min(4, worst.c.targeting.keywords.length));
+    results.push({
+      id: `low-eff-${worst.c.id}`,
+      tone: "warning",
+      title: `효과 없는 키워드 ${keywordCount}개를 끄는 게 좋아요`,
+      detail: `최근 7일간 ${formatKRW(worst.totals.spend)}원이 사용됐지만, 문의가 ${
+        worst.totals.conversions === 0 ? "없었어요" : "적었어요"
+      }.`,
+      buttonLabel: "적용하기",
+      impactLabel: "예상 절감 금액",
+      impactValue: `${formatKRW(worst.totals.spend)}원`,
+      campaignId: worst.c.id,
+      kind: "lower_bid",
+    });
+  }
+
+  const best = [...withTotals]
+    .filter((w) => w.c.id !== worst?.c.id)
+    .sort((a, b) => b.totals.roas - a.totals.roas)[0];
+  if (best && best.totals.roas >= 150) {
+    const keywordCount = Math.max(1, Math.min(6, best.c.targeting.keywords.length));
+    const low = Math.max(1, Math.round(best.totals.conversions * 0.08));
+    const high = Math.max(low + 1, Math.round(best.totals.conversions * 0.12));
+    results.push({
+      id: `raise-budget-${best.c.id}`,
+      tone: "positive",
+      title: "잘 되는 키워드의 예산을 늘려보세요",
+      detail: `문의가 많이 발생한 키워드 ${keywordCount}개의 예산을 15% 늘리면, 더 많은 문의를 기대할 수 있어요.`,
+      buttonLabel: "적용하기",
+      impactLabel: "예상 추가 문의",
+      impactValue: `+${low}~${high}건`,
+      campaignId: best.c.id,
+      kind: "raise_budget",
+    });
+  }
+
+  const topConversion = [...withTotals].sort((a, b) => b.totals.conversions - a.totals.conversions)[0];
+  if (topConversion && topConversion.totals.conversions > 0) {
+    const overallClicks = withTotals.reduce((sum, w) => sum + w.totals.clicks, 0);
+    const overallConversions = withTotals.reduce((sum, w) => sum + w.totals.conversions, 0);
+    const overallRate = overallClicks > 0 ? (overallConversions / overallClicks) * 100 : 0;
+    const topRate = topConversion.totals.clicks > 0 ? (topConversion.totals.conversions / topConversion.totals.clicks) * 100 : 0;
+    const deltaRate = Math.max(0.1, Math.round((topRate - overallRate) * 10) / 10);
+    results.push({
+      id: `target-${topConversion.c.id}`,
+      tone: "info",
+      title: `${topConversion.c.targeting.ageRange.replace("-", "~")}세 타겟에 더 집중해보세요`,
+      detail: "이 연령대에서 문의가 가장 많아요.",
+      buttonLabel: "설정하기",
+      impactLabel: "예상 전환율",
+      impactValue: `+${deltaRate.toFixed(1)}%p`,
+      campaignId: topConversion.c.id,
+      kind: "focus_target",
+    });
+  }
+
+  return results.slice(0, 3);
+}
+
+export interface CampaignSpotlight {
+  id: string;
+  tag: "best" | "rising" | "watch";
+  campaignId: string;
+  name: string;
+  conversions: number;
+  trendPct: number;
+  series: number[];
+}
+
+/**
+ * "캠페인 한눈에 보기" 카드용 — 가장 잘하는 캠페인, 상승세인 캠페인, 개선이 필요한 캠페인을 최대 3개 뽑는다.
+ */
+export function buildCampaignSpotlights(campaigns: Campaign[]): CampaignSpotlight[] {
+  const withStats = campaigns
+    .map((c) => ({
+      c,
+      totals: sumHistory(c.history.slice(-7)),
+      trendPct: trendPercent(c.history, "conversions"),
+      series: c.history.slice(-7).map((d) => d.conversions),
+    }))
+    .filter((w) => w.totals.spend > 0);
+
+  if (withStats.length === 0) return [];
+
+  const results: CampaignSpotlight[] = [];
+  const used = new Set<string>();
+
+  const toSpotlight = (w: (typeof withStats)[number], tag: CampaignSpotlight["tag"]): CampaignSpotlight => ({
+    id: `${tag}-${w.c.id}`,
+    tag,
+    campaignId: w.c.id,
+    name: w.c.name,
+    conversions: w.totals.conversions,
+    trendPct: w.trendPct,
+    series: w.series,
+  });
+
+  const best = [...withStats].sort((a, b) => b.totals.roas - a.totals.roas)[0];
+  if (best) {
+    results.push(toSpotlight(best, "best"));
+    used.add(best.c.id);
+  }
+
+  const rising = [...withStats].filter((w) => !used.has(w.c.id)).sort((a, b) => b.trendPct - a.trendPct)[0];
+  if (rising && rising.trendPct > 0) {
+    results.push(toSpotlight(rising, "rising"));
+    used.add(rising.c.id);
+  }
+
+  const watch = [...withStats].filter((w) => !used.has(w.c.id)).sort((a, b) => a.totals.roas - b.totals.roas)[0];
+  if (watch) {
+    results.push(toSpotlight(watch, "watch"));
+  }
+
+  return results.slice(0, 3);
+}
+
+export interface WeeklySummary {
+  headline: string;
+  highlight: string;
+  subtitle: string;
+  badge: string;
+  healthy: boolean;
+}
+
+const FLAT_THRESHOLD = 5;
+
+/**
+ * 메인 대시보드 상단 "이번 주 핵심 요약" 문구 — 광고비/문의 증감 조합을 사람이 읽는 한 문장으로 요약한다.
+ */
+export function composeWeeklySummary(spendTrendPct: number, conversionsTrendPct: number): WeeklySummary {
+  const pct = Math.round(Math.abs(conversionsTrendPct));
+
+  if (conversionsTrendPct <= -10) {
+    return {
+      headline: `지난주보다 문의가 ${pct}% 줄었어요.`,
+      highlight: `${pct}%`,
+      subtitle: "AI가 찾은 개선 방법을 확인해보세요.",
+      badge: "점검이 필요해요",
+      healthy: false,
+    };
+  }
+
+  if (Math.abs(spendTrendPct) < FLAT_THRESHOLD && conversionsTrendPct >= FLAT_THRESHOLD) {
+    return {
+      headline: `광고비는 비슷하지만, 문의가 ${pct}% 늘었어요.`,
+      highlight: `${pct}%`,
+      subtitle: "같은 광고비로 지난주보다 더 많은 성과를 얻었어요.",
+      badge: "좋은 흐름을 이어가고 있어요!",
+      healthy: true,
+    };
+  }
+
+  if (spendTrendPct <= -FLAT_THRESHOLD && conversionsTrendPct >= 0) {
+    return {
+      headline: `광고비는 줄었는데, 문의는 ${pct}% 늘었어요.`,
+      highlight: `${pct}%`,
+      subtitle: "효율이 좋아지고 있어요.",
+      badge: "좋은 흐름을 이어가고 있어요!",
+      healthy: true,
+    };
+  }
+
+  if (spendTrendPct >= FLAT_THRESHOLD && conversionsTrendPct >= FLAT_THRESHOLD) {
+    return {
+      headline: `광고비를 늘린 만큼, 문의도 ${pct}% 늘었어요.`,
+      highlight: `${pct}%`,
+      subtitle: "투자한 만큼 성과가 따라오고 있어요.",
+      badge: "좋은 흐름을 이어가고 있어요!",
+      healthy: true,
+    };
+  }
+
+  return {
+    headline: "지난주와 비슷한 성과를 유지하고 있어요.",
+    highlight: "",
+    subtitle: "AI가 더 좋은 실행안을 준비했어요.",
+    badge: "안정적으로 운영되고 있어요",
+    healthy: true,
+  };
+}
+
+export type RankMetric = "spend" | "conversions" | "conversionRate";
+
+export interface CampaignRankRow {
+  campaignId: string;
+  name: string;
+  value: number;
+  displayValue: string;
+}
+
+/**
+ * "최근 7일 캠페인 성과" 카드용 — 캠페인을 선택한 지표 기준으로 최근 7일 합산 순위를 매긴다.
+ */
+export function rankCampaignsByMetric(campaigns: Campaign[], metric: RankMetric): CampaignRankRow[] {
+  return campaigns
+    .map((c) => {
+      const totals = sumHistory(c.history.slice(-7));
+      const value =
+        metric === "spend"
+          ? totals.spend
+          : metric === "conversions"
+          ? totals.conversions
+          : totals.clicks > 0
+          ? (totals.conversions / totals.clicks) * 100
+          : 0;
+      const displayValue =
+        metric === "spend" ? `${formatKRW(totals.spend)}원` : metric === "conversions" ? `${totals.conversions}건` : `${value.toFixed(1)}%`;
+      return { campaignId: c.id, name: c.name, value, displayValue };
+    })
+    .sort((a, b) => b.value - a.value);
 }
