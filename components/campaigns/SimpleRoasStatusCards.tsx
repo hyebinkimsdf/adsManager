@@ -13,7 +13,13 @@ const TONE: Record<RoasBucket["key"], { bg: string; label: string }> = {
   bad: { bg: "var(--color-red-50)", label: "var(--color-red-500)" },
 };
 
-export function SimpleRoasStatusCards({ buckets }: { buckets: RoasBucket[] }) {
+export function SimpleRoasStatusCards({
+  buckets,
+  noDataCount = 0,
+}: {
+  buckets: RoasBucket[];
+  noDataCount?: number;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -85,6 +91,11 @@ export function SimpleRoasStatusCards({ buckets }: { buckets: RoasBucket[] }) {
           </div>
         ))}
       </div>
+      {noDataCount > 0 && (
+        <p css={{ marginTop: "0.875rem", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+          아직 지출 데이터가 없는 캠페인 {noDataCount}개는 집계에서 제외했어요.
+        </p>
+      )}
     </Card>
   );
 }

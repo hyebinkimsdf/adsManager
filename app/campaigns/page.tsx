@@ -111,12 +111,12 @@ export default function CampaignsPage() {
       );
     }
 
-    const buckets = buildRoasBuckets(campaigns);
+    const { buckets, noDataCount } = buildRoasBuckets(campaigns);
 
     return (
       <div css={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
         <SimpleSummaryHeader />
-        <SimpleRoasStatusCards buckets={buckets} />
+        <SimpleRoasStatusCards buckets={buckets} noDataCount={noDataCount} />
         <SimpleAiRecommendBanner campaigns={campaigns} />
         <SimpleQuickLinkCards onShowList={() => setView("list")} />
       </div>
