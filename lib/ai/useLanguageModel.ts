@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SYSTEM_PROMPT, buildUserTurn } from "./systemPrompt";
-import { ASSISTANT_RESPONSE_SCHEMA } from "./schema";
+import { SYSTEM_PROMPT_EN, buildUserTurnEn } from "./systemPrompt";
+import { ASSISTANT_RESPONSE_SCHEMA_EN } from "./schema";
 import { mockAssistantReply } from "./mockAssistant";
 import { fetchGeminiReply } from "./geminiChatClient";
+import { checkTranslatorAvailability, createTranslator, type TranslatorAvailability } from "./translator";
 import type { AssistantReply, CampaignSnapshot, EngineKind } from "./types";
 import { snapshotsToPromptJson } from "./context";
-import type { LanguageModelSession } from "./global";
+import type { LanguageModelSession, TranslatorSession } from "./global";
 
 export type AvailabilityState =
   | "checking"
@@ -17,10 +18,15 @@ export type AvailabilityState =
   | "available"
   | "error";
 
-// 시스템 프롬프트가 한국어 응답을 강제하므로, 크롬이 실제로 한국어 출력을 지원하는지
-// availability()/create() 양쪽에 동일하게 선언해서 정확히 감지한다.
-// (2026년 9월 기준 크롬 Prompt API는 en/ja/es/de/fr만 공식 지원 — 한국어는 아직 없음)
-const KOREAN_TEXT = { type: "text" as const, languages: ["ko"] };
+// 크롬 Prompt API는 아직 한국어 입출력을 공식 지원하지 않는다(2026년 9월 기준 en/ja/es/de/fr만 지원).
+// 그래서 온디바이스 모델 자체는 영어로 돌리고, 별도의 온디바이스 Translator API로
+// "한국어 질문 → 영어 번역 → 영어로 생성 → 한국어 번역" 다리를 놓아 우회한다.
+const EN_TEXT = { type: "text" as const, languages: ["en"] };
+
+interface Translators {
+  toEn: TranslatorSession;
+  toKo: TranslatorSession;
+}
 
 export interface AskResult {
   reply: AssistantReply;
@@ -50,27 +56,45 @@ function safeParseReply(raw: string): AssistantReply | null {
   }
 }
 
+// 여러 개의 "unavailable/downloadable/downloading/available" 상태를 하나로 합칠 때,
+// 셋 중 가장 준비가 덜 된 상태를 전체 상태로 취급한다(하나라도 막혀 있으면 우회 경로 전체가 막힌다).
+function worstOf(a: TranslatorAvailability, b: TranslatorAvailability): TranslatorAvailability {
+  const rank: Record<TranslatorAvailability, number> = {
+    unavailable: 0,
+    downloadable: 1,
+    downloading: 2,
+    available: 3,
+  };
+  return rank[a] <= rank[b] ? a : b;
+}
+
 export function useLanguageModel(): UseLanguageModelResult {
   const [state, setState] = useState<AvailabilityState>("checking");
   const [downloadProgress, setDownloadProgress] = useState(0);
   const sessionRef = useRef<LanguageModelSession | null>(null);
   const creatingRef = useRef<Promise<LanguageModelSession | null> | null>(null);
+  const translatorsRef = useRef<Translators | null>(null);
+  const creatingTranslatorsRef = useRef<Promise<Translators | null> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     async function check() {
-      if (typeof window === "undefined" || !window.LanguageModel) {
+      if (typeof window === "undefined" || !window.LanguageModel || !window.Translator) {
         if (!cancelled) setState("unsupported");
         return;
       }
       try {
-        const availability = await window.LanguageModel.availability({
-          expectedInputs: [KOREAN_TEXT],
-          expectedOutputs: [KOREAN_TEXT],
-        });
+        const [lm, koEn, enKo] = await Promise.all([
+          window.LanguageModel.availability({
+            expectedInputs: [EN_TEXT],
+            expectedOutputs: [EN_TEXT],
+          }),
+          checkTranslatorAvailability("ko", "en"),
+          checkTranslatorAvailability("en", "ko"),
+        ]);
         if (cancelled) return;
-        if (availability === "unavailable") setState("unsupported");
-        else setState(availability);
+        const combined = [lm, koEn, enKo].reduce(worstOf);
+        setState(combined === "unavailable" ? "unsupported" : combined);
       } catch {
         if (!cancelled) setState("unsupported");
       }
@@ -89,9 +113,9 @@ export function useLanguageModel(): UseLanguageModelResult {
     const promise = (async () => {
       try {
         const session = await window.LanguageModel!.create({
-          initialPrompts: [{ role: "system", content: SYSTEM_PROMPT }],
-          expectedInputs: [KOREAN_TEXT],
-          expectedOutputs: [KOREAN_TEXT],
+          initialPrompts: [{ role: "system", content: SYSTEM_PROMPT_EN }],
+          expectedInputs: [EN_TEXT],
+          expectedOutputs: [EN_TEXT],
           monitor: (monitor) => {
             monitor.addEventListener("downloadprogress", (event) => {
               const e = event as unknown as { loaded?: number };
@@ -103,7 +127,6 @@ export function useLanguageModel(): UseLanguageModelResult {
           },
         });
         sessionRef.current = session;
-        setState("available");
         return session;
       } catch {
         setState("error");
@@ -116,33 +139,82 @@ export function useLanguageModel(): UseLanguageModelResult {
     return promise;
   }, []);
 
+  const ensureTranslators = useCallback(async (): Promise<Translators | null> => {
+    if (translatorsRef.current) return translatorsRef.current;
+    if (!window.Translator) return null;
+    if (creatingTranslatorsRef.current) return creatingTranslatorsRef.current;
+
+    const promise = (async () => {
+      try {
+        const onProgress = (loaded: number) => {
+          setDownloadProgress(Math.round(loaded * 100));
+          setState("downloading");
+        };
+        const [toEn, toKo] = await Promise.all([
+          createTranslator("ko", "en", onProgress),
+          createTranslator("en", "ko", onProgress),
+        ]);
+        if (!toEn || !toKo) return null;
+        translatorsRef.current = { toEn, toKo };
+        return translatorsRef.current;
+      } catch {
+        return null;
+      } finally {
+        creatingTranslatorsRef.current = null;
+      }
+    })();
+    creatingTranslatorsRef.current = promise;
+    return promise;
+  }, []);
+
   const ask = useCallback(
     async (message: string, campaigns: CampaignSnapshot[]): Promise<AskResult> => {
-      const canUseOnDevice = state !== "unsupported" && state !== "error" && !!window.LanguageModel;
+      const canUseOnDevice =
+        state !== "unsupported" && state !== "error" && !!window.LanguageModel && !!window.Translator;
       const mockFallback = () => ({ reply: mockAssistantReply(message, campaigns), engine: "preview" as EngineKind });
 
       if (canUseOnDevice) {
         try {
           const onDevice = (async () => {
-            const session = await ensureSession();
-            if (!session) {
-              console.warn("[assistant] 온디바이스 세션 생성 실패 (ensureSession()이 null 반환)");
+            const [session, translators] = await Promise.all([ensureSession(), ensureTranslators()]);
+            if (!session || !translators) {
+              console.warn("[assistant] 온디바이스 세션/번역기 준비 실패");
               return null;
             }
-            const raw = await session.prompt(buildUserTurn(message, snapshotsToPromptJson(campaigns)), {
-              responseConstraint: ASSISTANT_RESPONSE_SCHEMA,
-            });
-            const parsed = safeParseReply(raw);
-            if (!parsed) console.warn("[assistant] 온디바이스 응답 파싱 실패, 원본 응답:", raw);
-            return parsed;
+
+            const englishMessage = await translators.toEn.translate(message);
+            const raw = await session.prompt(
+              buildUserTurnEn(englishMessage, snapshotsToPromptJson(campaigns)),
+              { responseConstraint: ASSISTANT_RESPONSE_SCHEMA_EN }
+            );
+            const parsedEn = safeParseReply(raw);
+            if (!parsedEn) {
+              console.warn("[assistant] 온디바이스 응답 파싱 실패, 원본 응답:", raw);
+              return null;
+            }
+
+            const [translatedReply, translatedActions] = await Promise.all([
+              translators.toKo.translate(parsedEn.reply),
+              Promise.all(
+                parsedEn.actions.map(async (action) => ({
+                  ...action,
+                  label: await translators.toKo.translate(action.label),
+                  description: await translators.toKo.translate(action.description),
+                }))
+              ),
+            ]);
+
+            const reply: AssistantReply = { reply: translatedReply, actions: translatedActions };
+            setState("available");
+            return reply;
           })();
-          // 모델 다운로드가 안 끝났거나 응답이 지연되면 오래 기다리지 않고 다음 단계로 넘어간다.
+          // 번역 왕복이 두 번 더 붙어서 순수 생성보다 오래 걸릴 수 있어, 타임아웃을 조금 더 넉넉하게 잡는다.
           let onDeviceTimeoutId: ReturnType<typeof setTimeout>;
           const timeout = new Promise<null>((resolve) => {
             onDeviceTimeoutId = setTimeout(() => {
-              console.warn("[assistant] 온디바이스 응답 6초 타임아웃");
+              console.warn("[assistant] 온디바이스 응답 9초 타임아웃");
               resolve(null);
-            }, 6000);
+            }, 9000);
           });
           const parsed = await Promise.race([onDevice, timeout]);
           clearTimeout(onDeviceTimeoutId!);
@@ -170,12 +242,14 @@ export function useLanguageModel(): UseLanguageModelResult {
 
       return mockFallback();
     },
-    [ensureSession, state]
+    [ensureSession, ensureTranslators, state]
   );
 
   useEffect(() => {
     return () => {
       sessionRef.current?.destroy();
+      translatorsRef.current?.toEn.destroy();
+      translatorsRef.current?.toKo.destroy();
     };
   }, []);
 

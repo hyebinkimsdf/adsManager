@@ -38,3 +38,44 @@ export const ASSISTANT_RESPONSE_SCHEMA = {
     },
   },
 } as const;
+
+// 크롬 온디바이스 Prompt API의 영어 우회 경로용 — enum 등 구조는 ASSISTANT_RESPONSE_SCHEMA와 동일하고,
+// 모델이 실제로 생성하는 자연어(reply/label/description)만 영어로 유도한다.
+export const ASSISTANT_RESPONSE_SCHEMA_EN = {
+  type: "object",
+  additionalProperties: false,
+  required: ["reply", "actions"],
+  properties: {
+    reply: {
+      type: "string",
+      description: "Reply to show the user, in English. 2-3 sentences, friendly and concise.",
+    },
+    actions: {
+      type: "array",
+      maxItems: 3,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "type", "label", "description", "riskLevel"],
+        properties: {
+          id: { type: "string" },
+          type: {
+            type: "string",
+            enum: [
+              "adjust_budget",
+              "pause_campaign",
+              "resume_campaign",
+              "open_keyword_tool",
+              "info",
+            ],
+          },
+          label: { type: "string", description: "Short action name for the button, in English" },
+          description: { type: "string", description: "One English sentence describing what this action changes" },
+          campaignId: { type: "string" },
+          percent: { type: "number" },
+          riskLevel: { type: "string", enum: ["low", "medium", "high"] },
+        },
+      },
+    },
+  },
+} as const;

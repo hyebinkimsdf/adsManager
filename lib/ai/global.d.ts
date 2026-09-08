@@ -33,9 +33,34 @@ export interface LanguageModelStatic {
   create(options?: LanguageModelCreateOptions): Promise<LanguageModelSession>;
 }
 
+export interface TranslatorSession {
+  translate(text: string): Promise<string>;
+  destroy(): void;
+}
+
+export interface TranslatorCreateOptions {
+  sourceLanguage: string;
+  targetLanguage: string;
+  monitor?: (monitor: EventTarget) => void;
+}
+
+export interface TranslatorAvailabilityOptions {
+  sourceLanguage: string;
+  targetLanguage: string;
+}
+
+export interface TranslatorStatic {
+  availability(
+    options: TranslatorAvailabilityOptions
+  ): Promise<"unavailable" | "downloadable" | "downloading" | "available">;
+  create(options: TranslatorCreateOptions): Promise<TranslatorSession>;
+}
+
 declare global {
   interface Window {
     LanguageModel?: LanguageModelStatic;
+    Translator?: TranslatorStatic;
   }
   var LanguageModel: LanguageModelStatic | undefined;
+  var Translator: TranslatorStatic | undefined;
 }
