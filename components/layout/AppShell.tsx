@@ -4,16 +4,53 @@
 import { css } from "@emotion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HiOutlineHome, HiOutlineMegaphone, HiOutlinePlus, HiSparkles } from "react-icons/hi2";
+import type { IconType } from "react-icons";
+import {
+  HiOutlineHome,
+  HiOutlineMegaphone,
+  HiOutlinePlus,
+  HiOutlineChartBar,
+  HiOutlineUserGroup,
+  HiOutlineLink,
+  HiOutlineGift,
+  HiOutlinePhoto,
+  HiSparkles,
+} from "react-icons/hi2";
 import { AssistantDock } from "@/components/assistant/AssistantDock";
 import { ModeToggle } from "@/components/layout/ModeToggle";
 import { AccountModeMenu } from "@/components/layout/AccountModeMenu";
 
-const NAV_ITEMS = [
-  { href: "/", label: "홈", icon: HiOutlineHome },
-  { href: "/campaigns", label: "캠페인", icon: HiOutlineMegaphone },
-  { href: "/campaigns/new", label: "새 캠페인", icon: HiOutlinePlus },
+interface NavItem {
+  href: string;
+  label: string;
+  icon: IconType;
+}
+
+// 데스크톱 사이드바에서만 그룹 라벨(광고/광고 도구 등)로 나눠 보여준다 — 토스애즈 광고주센터의
+// "디스플레이 광고 / 리워드 광고 / 광고 도구" 그룹 구성을 참고했다.
+const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
+  { items: [{ href: "/", label: "홈", icon: HiOutlineHome }] },
+  {
+    label: "디스플레이 광고",
+    items: [
+      { href: "/campaigns", label: "캠페인", icon: HiOutlineMegaphone },
+      { href: "/campaigns/new", label: "새 캠페인", icon: HiOutlinePlus },
+    ],
+  },
+  {
+    label: "리워드 광고",
+    items: [
+      { href: "/campaigns/reward", label: "리워드 캠페인", icon: HiOutlineGift },
+      { href: "/campaigns/reward/new", label: "새 리워드 캠페인", icon: HiOutlinePlus },
+    ],
+  },
+  { label: "Measurement", items: [{ href: "/measurement", label: "Measurement", icon: HiOutlineChartBar }] },
+  { label: "타겟", items: [{ href: "/audiences", label: "타겟", icon: HiOutlineUserGroup }] },
+  { label: "소재", items: [{ href: "/creatives", label: "AI 사전 심사", icon: HiOutlinePhoto }] },
+  { label: "광고 도구", items: [{ href: "/tracking", label: "전환 및 추적 연동", icon: HiOutlineLink }] },
 ];
+
+const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -94,17 +131,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </span>
           <span css={{ fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>AI 광고 관리자</span>
         </div>
-        <nav css={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-          {NAV_ITEMS.map((item) => {
-            const active = isActive(pathname, item.href);
-            const Icon = item.icon;
-            return (
-              <Link key={item.href} href={item.href} css={navLinkStyle(active)}>
-                <Icon style={{ height: "1.125rem", width: "1.125rem" }} aria-hidden="true" />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav css={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {NAV_GROUPS.map((group, i) => (
+            <div key={group.label ?? `group-${i}`} css={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+              {group.label && (
+                <p
+                  css={{
+                    padding: "0 0.75rem",
+                    marginBottom: "0.125rem",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--color-gray-400)",
+                  }}
+                >
+                  {group.label}
+                </p>
+              )}
+              {group.items.map((item) => {
+                const active = isActive(pathname, item.href);
+                const Icon = item.icon;
+                return (
+                  <Link key={item.href} href={item.href} css={navLinkStyle(active)}>
+                    <Icon style={{ height: "1.125rem", width: "1.125rem" }} aria-hidden="true" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <div css={{ marginTop: "auto", padding: "0 0.5rem", paddingTop: "1.5rem" }}>
           <p css={{ marginBottom: "0.5rem", fontSize: 11, fontWeight: 500, color: "var(--color-gray-400)" }}>내 계정</p>
