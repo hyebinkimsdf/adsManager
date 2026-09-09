@@ -172,6 +172,21 @@ export type RewardCampaign =
       createdAt: string;
     };
 
+/** AI 사전 심사를 거쳐 저장된 배너 소재. precheck 스냅샷을 그대로 들고 있어 저장 시점의 결과를 보존한다. */
+export interface Creative {
+  id: string;
+  campaignId: string;
+  campaignName: string;
+  headline: string;
+  body: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  landingUrl: string;
+  precheckScore: number;
+  precheckItems: { id: string; category: "copy" | "image" | "landing"; label: string; status: "pass" | "warn" | "fail"; detail: string }[];
+  createdAt: string;
+}
+
 export interface CampaignTotals {
   spend: number;
   impressions: number;

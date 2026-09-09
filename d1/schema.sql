@@ -71,3 +71,18 @@ CREATE TABLE IF NOT EXISTS RewardCampaign (
   config TEXT NOT NULL,
   createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
+
+-- AI 사전 심사를 거쳐 저장된 배너 소재. precheckItems는 저장 시점 결과 스냅샷을 JSON으로 보존한다.
+CREATE TABLE IF NOT EXISTS Creative (
+  id TEXT PRIMARY KEY,
+  campaignId TEXT NOT NULL,
+  campaignName TEXT NOT NULL,
+  headline TEXT NOT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  imageWidth INTEGER,
+  imageHeight INTEGER,
+  landingUrl TEXT NOT NULL,
+  precheckScore INTEGER NOT NULL,
+  precheckItems TEXT NOT NULL,
+  createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
