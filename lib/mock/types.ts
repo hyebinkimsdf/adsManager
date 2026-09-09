@@ -96,6 +96,41 @@ export interface EventRule {
   enabled: boolean;
 }
 
+/**
+ * 토스애즈 직접타겟팅의 실제 생성 방식 3가지(리타겟팅/전환추적 타겟/고객목록 타겟)를 그대로 따른다.
+ * 판별 유니온이라 type 값에 따라 나머지 필드가 정해진다.
+ */
+export type Audience =
+  | {
+      id: string;
+      name: string;
+      type: "retargeting";
+      estimatedSize: number;
+      createdAt: string;
+      sourceCampaignIds: string[];
+      /** 이 캠페인에 "방문"만 했는지, "구매"까지 했는지로 재타겟팅 대상을 가른다. */
+      action: "visit" | "purchase";
+    }
+  | {
+      id: string;
+      name: string;
+      type: "conversion";
+      estimatedSize: number;
+      createdAt: string;
+      eventType: ConversionEventType;
+      lookbackDays: number;
+      mode: "include" | "exclude";
+    }
+  | {
+      id: string;
+      name: string;
+      type: "customer_list";
+      estimatedSize: number;
+      createdAt: string;
+      fileName: string;
+      rowCount: number;
+    };
+
 export interface CampaignTotals {
   spend: number;
   impressions: number;

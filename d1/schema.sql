@@ -51,3 +51,13 @@ CREATE TABLE IF NOT EXISTS EventRule (
 );
 
 CREATE INDEX IF NOT EXISTS idx_event_rule_campaign ON EventRule(campaignId);
+
+-- 저장된 타겟(리타겟팅/전환추적 타겟/고객목록 타겟). type별 나머지 필드는 config에 JSON으로 저장한다.
+CREATE TABLE IF NOT EXISTS Audience (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  estimatedSize INTEGER NOT NULL DEFAULT 0,
+  config TEXT NOT NULL,
+  createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
