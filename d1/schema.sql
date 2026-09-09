@@ -61,3 +61,13 @@ CREATE TABLE IF NOT EXISTS Audience (
   config TEXT NOT NULL,
   createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
+
+-- 리워드 광고(머니알림/행운퀴즈/버튼 누르기). productType별 나머지 필드는 config에 JSON으로 저장한다.
+CREATE TABLE IF NOT EXISTS RewardCampaign (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  productType TEXT NOT NULL,
+  status TEXT NOT NULL,
+  config TEXT NOT NULL,
+  createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);

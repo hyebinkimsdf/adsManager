@@ -131,6 +131,47 @@ export type Audience =
       rowCount: number;
     };
 
+export type RewardProductType = "money_notification" | "lucky_quiz" | "button_press";
+export type RewardCampaignStatus = "active" | "paused";
+
+/**
+ * 리워드 광고 대표 3종(머니알림/행운퀴즈/버튼 누르기)만 우선 지원한다 — 나머지 5종(라이브쇼핑/숏폼/
+ * 두근두근1등찍기/미션류)은 이후 단계에서 필요할 때 같은 판별 유니온에 추가한다.
+ */
+export type RewardCampaign =
+  | {
+      id: string;
+      name: string;
+      productType: "money_notification";
+      status: RewardCampaignStatus;
+      variant: "basic" | "live";
+      /** 최소 3만명 — 토스애즈 머니알림 일반형/라이브형 최소 타겟 규모 */
+      targetSize: number;
+      /** 업종·관심사 등 조건부 타겟을 추가로 쓰면 CPP가 가산된다(기본 30원, 상한 100원) */
+      advancedTargeting: boolean;
+      dailyBudget: number;
+      createdAt: string;
+    }
+  | {
+      id: string;
+      name: string;
+      productType: "lucky_quiz";
+      status: RewardCampaignStatus;
+      /** 100만~2000만원 — 논타겟 상품이라 혜택탭 전체 유저 대상 */
+      totalBudget: number;
+      createdAt: string;
+    }
+  | {
+      id: string;
+      name: string;
+      productType: "button_press";
+      status: RewardCampaignStatus;
+      creativeType: "button" | "catalog";
+      landingUrl: string;
+      dailyBudget: number;
+      createdAt: string;
+    };
+
 export interface CampaignTotals {
   spend: number;
   impressions: number;
