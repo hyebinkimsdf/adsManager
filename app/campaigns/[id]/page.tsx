@@ -6,8 +6,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCampaign } from "@/lib/mock/store";
-import { updateBudget, setStatus, updateTargeting, updateIndustry, deleteCampaign } from "@/lib/mock/store";
-import { sumHistory, CHANNEL_LABEL, OBJECTIVE_LABEL, INDUSTRY_LABEL } from "@/lib/mock/campaigns";
+import { updateBudget, setStatus, updateIndustry, deleteCampaign } from "@/lib/mock/store";
+import { sumHistory, OBJECTIVE_LABEL, INDUSTRY_LABEL } from "@/lib/mock/campaigns";
 import { formatCompactKRW, formatPercent } from "@/lib/format";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -15,7 +15,6 @@ import { Toggle } from "@/components/ui/Toggle";
 import { Button } from "@/components/ui/Button";
 import { SummaryCard } from "@/components/dashboard/SummaryCard";
 import { LineChart } from "@/components/dashboard/LineChart";
-import { KeywordAssistant } from "@/components/campaigns/KeywordAssistant";
 import type { CampaignIndustry } from "@/lib/mock/types";
 
 const INDUSTRY_KEYS = Object.keys(INDUSTRY_LABEL) as CampaignIndustry[];
@@ -84,11 +83,6 @@ export default function CampaignDetailPage() {
         </div>
         <div css={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Badge tone="gray">{INDUSTRY_LABEL[campaign.industry]}</Badge>
-          {campaign.channels.map((ch) => (
-            <Badge key={ch} tone="gray">
-              {CHANNEL_LABEL[ch]}
-            </Badge>
-          ))}
           <Badge tone="blue">{OBJECTIVE_LABEL[campaign.objective]}</Badge>
         </div>
       </div>
@@ -236,21 +230,6 @@ export default function CampaignDetailPage() {
             </Badge>
           ))}
         </div>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>키워드</CardTitle>
-        </CardHeader>
-        <KeywordAssistant
-          objective={campaign.objective}
-          channels={campaign.channels}
-          industry={campaign.industry}
-          name={campaign.name}
-          selected={campaign.targeting.keywords}
-          onChange={(keywords) => updateTargeting(campaign.id, { keywords })}
-          dailyBudget={campaign.dailyBudget}
-        />
       </Card>
 
       <Card>

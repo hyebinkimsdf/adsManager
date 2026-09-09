@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS Campaign (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  channels TEXT NOT NULL,   -- JSON 배열로 저장 (SQLite엔 네이티브 배열/JSON 타입이 없음)
+  adType TEXT NOT NULL DEFAULT 'display',
   objective TEXT NOT NULL,
   industry TEXT NOT NULL,
   status TEXT NOT NULL,

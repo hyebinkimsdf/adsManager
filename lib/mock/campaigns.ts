@@ -1,7 +1,7 @@
-import type { Campaign, CampaignChannel, CampaignTotals, DayMetric } from "./types";
+import type { Campaign, CampaignTotals, DayMetric, DisplayObjective } from "./types";
 
 // 시드 고정 PRNG — 서버/클라이언트 렌더링이 항상 동일한 값을 내도록 함(hydration mismatch 방지)
-function mulberry32(seed: number) {
+export function mulberry32(seed: number) {
   let a = seed;
   return function random() {
     a |= 0;
@@ -42,10 +42,10 @@ function buildHistory(seed: number, baseSpend: number, trend: number): DayMetric
 
 export const CAMPAIGNS: Campaign[] = [
   {
-    id: "camp-search-brand",
-    name: "브랜드 검색 캠페인",
-    channels: ["search"],
-    objective: "conversion",
+    id: "camp-purchase-shopping",
+    name: "쇼핑몰 구매 전환 캠페인",
+    adType: "display",
+    objective: "purchase",
     industry: "shopping",
     status: "active",
     dailyBudget: 120000,
@@ -53,16 +53,15 @@ export const CAMPAIGNS: Campaign[] = [
       ageRange: "25-44",
       gender: "all",
       regions: ["서울", "경기"],
-      interests: ["브랜드 검색"],
-      keywords: ["브랜드명 구매", "브랜드명 할인", "브랜드명 후기"],
+      interests: ["온라인 쇼핑", "패션"],
     },
     history: buildHistory(11, 118000, 0.15),
   },
   {
-    id: "camp-social-newlaunch",
-    name: "신제품 런칭 · 소셜",
-    channels: ["social"],
-    objective: "traffic",
+    id: "camp-visit-newlaunch",
+    name: "신제품 런칭 · 방문 유도",
+    adType: "display",
+    objective: "visit",
     industry: "beauty",
     status: "active",
     dailyBudget: 90000,
@@ -71,15 +70,14 @@ export const CAMPAIGNS: Campaign[] = [
       gender: "female",
       regions: ["전국"],
       interests: ["뷰티", "라이프스타일"],
-      keywords: ["신제품 추천", "여성 뷰티템"],
     },
     history: buildHistory(27, 85000, -0.22),
   },
   {
-    id: "camp-display-retarget",
-    name: "리타겟팅 디스플레이",
-    channels: ["display"],
-    objective: "conversion",
+    id: "camp-purchase-retarget",
+    name: "리타겟팅 구매 유도",
+    adType: "display",
+    objective: "purchase",
     industry: "shopping",
     status: "active",
     dailyBudget: 60000,
@@ -88,31 +86,29 @@ export const CAMPAIGNS: Campaign[] = [
       gender: "all",
       regions: ["전국"],
       interests: ["장바구니 이탈"],
-      keywords: [],
     },
     history: buildHistory(41, 58000, 0.35),
   },
   {
-    id: "camp-video-awareness",
-    name: "브랜드 인지도 · 영상",
-    channels: ["video", "display"],
-    objective: "awareness",
-    industry: "etc",
+    id: "camp-appinstall-service",
+    name: "앱 설치 유도 · 신규 서비스",
+    adType: "display",
+    objective: "app_install",
+    industry: "it_app",
     status: "paused",
     dailyBudget: 150000,
     targeting: {
       ageRange: "18-29",
       gender: "all",
       regions: ["서울", "부산", "인천"],
-      interests: ["엔터테인먼트"],
-      keywords: [],
+      interests: ["앱테크", "테크 얼리어답터"],
     },
     history: buildHistory(59, 140000, -0.05),
   },
   {
-    id: "camp-social-leads",
-    name: "상담 신청 · 리드",
-    channels: ["social", "search"],
+    id: "camp-leads-finance",
+    name: "상담 신청 · 잠재고객",
+    adType: "display",
     objective: "leads",
     industry: "finance",
     status: "active",
@@ -122,7 +118,6 @@ export const CAMPAIGNS: Campaign[] = [
       gender: "all",
       regions: ["전국"],
       interests: ["금융", "재테크"],
-      keywords: ["무료 상담 신청", "재테크 상담"],
     },
     history: buildHistory(73, 68000, 0.08),
   },
@@ -160,13 +155,6 @@ export function trendPercent(history: DayMetric[], key: keyof DayMetric): number
   return ((second - first) / first) * 100;
 }
 
-export const CHANNEL_LABEL: Record<CampaignChannel, string> = {
-  search: "검색",
-  social: "소셜",
-  display: "디스플레이",
-  video: "영상",
-};
-
 export const INDUSTRY_LABEL: Record<Campaign["industry"], string> = {
   food: "외식·카페",
   beauty: "뷰티",
@@ -179,9 +167,9 @@ export const INDUSTRY_LABEL: Record<Campaign["industry"], string> = {
   etc: "기타",
 };
 
-export const OBJECTIVE_LABEL: Record<Campaign["objective"], string> = {
-  conversion: "전환",
-  traffic: "트래픽",
-  awareness: "인지도",
-  leads: "리드 수집",
+export const OBJECTIVE_LABEL: Record<DisplayObjective, string> = {
+  purchase: "구매 유도",
+  app_install: "앱 설치 유도",
+  leads: "잠재고객 모으기",
+  visit: "방문 유도",
 };

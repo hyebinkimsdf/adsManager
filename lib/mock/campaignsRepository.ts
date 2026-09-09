@@ -57,26 +57,6 @@ export async function updateTargeting(id: string, targeting: Partial<Campaign["t
   return patchCampaign(id, { targeting: { ...campaign.targeting, ...targeting } });
 }
 
-export async function adjustKeywordBidsByPercent(id: string, percent: number) {
-  const campaign = await findCampaign(id);
-  if (!campaign || campaign.targeting.keywords.length === 0) return getCampaigns();
-  const currentBids = campaign.targeting.keywordBids ?? {};
-  const fallbackBid = 650; // 네이버 검색광고 기본 최소 입찰가 근사치
-  const nextBids: Record<string, number> = { ...currentBids };
-  for (const keyword of campaign.targeting.keywords) {
-    const base = currentBids[keyword] ?? fallbackBid;
-    nextBids[keyword] = Math.max(70, Math.round(base * (1 + percent / 100)));
-  }
-  return patchCampaign(id, { targeting: { ...campaign.targeting, keywordBids: nextBids } });
-}
-
-export async function addKeywords(id: string, keywords: string[]) {
-  const campaign = await findCampaign(id);
-  if (!campaign) return getCampaigns();
-  const merged = Array.from(new Set([...campaign.targeting.keywords, ...keywords]));
-  return patchCampaign(id, { targeting: { ...campaign.targeting, keywords: merged } });
-}
-
 export async function addCampaign(campaign: Campaign) {
   await fetchJson(API_BASE, {
     method: "POST",

@@ -148,8 +148,8 @@ export interface WeeklyRecommendation {
   impactLabel: string;
   impactValue: string;
   campaignId: string;
-  kind: "lower_bid" | "raise_budget" | "focus_target";
-  /** 적용 버튼을 눌렀을 때 실제로 쓸 조정 비율. lower_bid는 음수, raise_budget은 양수, focus_target은 0(조정 없음, 타겟 화면으로 이동). */
+  kind: "lower_budget" | "raise_budget" | "focus_target";
+  /** 적용 버튼을 눌렀을 때 실제로 쓸 조정 비율. lower_budget은 음수, raise_budget은 양수, focus_target은 0(조정 없음, 타겟 화면으로 이동). */
   percent: number;
 }
 
@@ -195,20 +195,19 @@ export function buildWeeklyRecommendations(campaigns: Campaign[]): WeeklyRecomme
 
   const worst = [...withTotals].sort((a, b) => a.totals.roas - b.totals.roas)[0];
   if (worst && worst.totals.roas < 150) {
-    const keywordCount = Math.max(1, Math.min(4, worst.c.targeting.keywords.length));
     const percent = -20;
     results.push({
       id: `low-eff-${worst.c.id}`,
       tone: "warning",
-      title: `효과 없는 키워드 ${keywordCount}개를 끄는 게 좋아요`,
-      detail: `최근 7일간 ${formatKRW(worst.totals.spend)}원이 사용됐지만, 문의가 ${
+      title: `${worst.c.name}의 예산을 줄이는 게 좋아요`,
+      detail: `최근 7일간 ${formatKRW(worst.totals.spend)}원이 사용됐지만, 전환이 ${
         worst.totals.conversions === 0 ? "없었어요" : "적었어요"
       }.`,
       buttonLabel: "적용하기",
       impactLabel: "예상 절감 금액",
       impactValue: estimateSavings(worst.totals.spend, percent),
       campaignId: worst.c.id,
-      kind: "lower_bid",
+      kind: "lower_budget",
       percent,
     });
   }
@@ -217,15 +216,14 @@ export function buildWeeklyRecommendations(campaigns: Campaign[]): WeeklyRecomme
     .filter((w) => w.c.id !== worst?.c.id)
     .sort((a, b) => b.totals.roas - a.totals.roas)[0];
   if (best && best.totals.roas >= 150) {
-    const keywordCount = Math.max(1, Math.min(6, best.c.targeting.keywords.length));
     const percent = 15;
     results.push({
       id: `raise-budget-${best.c.id}`,
       tone: "positive",
-      title: "잘 되는 키워드의 예산을 늘려보세요",
-      detail: `문의가 많이 발생한 키워드 ${keywordCount}개의 예산을 15% 늘리면, 더 많은 문의를 기대할 수 있어요.`,
+      title: "성과가 좋은 캠페인의 예산을 늘려보세요",
+      detail: `${best.c.name}의 예산을 15% 늘리면, 더 많은 전환을 기대할 수 있어요.`,
       buttonLabel: "적용하기",
-      impactLabel: "예상 추가 문의",
+      impactLabel: "예상 추가 전환",
       impactValue: estimateExtraConversions(best.totals.conversions, percent),
       campaignId: best.c.id,
       kind: "raise_budget",
@@ -255,20 +253,20 @@ export function buildWeeklyRecommendations(campaigns: Campaign[]): WeeklyRecomme
 }
 
 const TONE_BY_KIND: Record<WeeklyRecommendation["kind"], WeeklyRecommendation["tone"]> = {
-  lower_bid: "warning",
+  lower_budget: "warning",
   raise_budget: "positive",
   focus_target: "info",
 };
 
 const BUTTON_LABEL_BY_KIND: Record<WeeklyRecommendation["kind"], string> = {
-  lower_bid: "적용하기",
+  lower_budget: "적용하기",
   raise_budget: "적용하기",
   focus_target: "설정하기",
 };
 
 const IMPACT_LABEL_BY_KIND: Record<WeeklyRecommendation["kind"], string> = {
-  lower_bid: "예상 절감 금액",
-  raise_budget: "예상 추가 문의",
+  lower_budget: "예상 절감 금액",
+  raise_budget: "예상 추가 전환",
   focus_target: "예상 전환율",
 };
 
@@ -284,7 +282,6 @@ export function buildWeeklyCampaignInputs(campaigns: Campaign[]): WeeklyCampaign
     roas: totals.roas,
     conversionsTrendPercent: trendPercent(c.history, "conversions"),
     ageRange: c.targeting.ageRange,
-    keywordCount: c.targeting.keywords.length,
   }));
 }
 
@@ -299,17 +296,17 @@ export function hydrateWeeklyRecommendation(
   const withTotals = withLast7Totals(campaigns);
   const match = withTotals.find((w) => w.c.id === rec.campaignId);
   if (!match) return null;
-  if (!["lower_bid", "raise_budget", "focus_target"].includes(rec.kind)) return null;
+  if (!["lower_budget", "raise_budget", "focus_target"].includes(rec.kind)) return null;
 
   const percent =
     rec.kind === "focus_target"
       ? 0
-      : rec.kind === "lower_bid"
+      : rec.kind === "lower_budget"
       ? -Math.max(1, Math.min(30, Math.round(Math.abs(rec.percent || 20))))
       : Math.max(1, Math.min(30, Math.round(Math.abs(rec.percent || 15))));
 
   const impactValue =
-    rec.kind === "lower_bid"
+    rec.kind === "lower_budget"
       ? estimateSavings(match.totals.spend, percent)
       : rec.kind === "raise_budget"
       ? estimateExtraConversions(match.totals.conversions, percent)

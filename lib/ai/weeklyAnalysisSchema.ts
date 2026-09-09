@@ -14,7 +14,7 @@ export const WEEKLY_ANALYSIS_RESPONSE_SCHEMA = {
         required: ["campaignId", "kind", "title", "detail", "percent"],
         properties: {
           campaignId: { type: "string" },
-          kind: { type: "string", enum: ["lower_bid", "raise_budget", "focus_target"] },
+          kind: { type: "string", enum: ["lower_budget", "raise_budget", "focus_target"] },
           title: { type: "string", description: "무엇을 할지 한 문장" },
           detail: { type: "string", description: "왜 그런지 실제 수치 근거로 한 문장" },
           percent: { type: "number", description: "-30~30 사이 정수. focus_target이면 0" },
@@ -40,7 +40,7 @@ export const WEEKLY_ANALYSIS_RESPONSE_SCHEMA = {
 
 export interface WeeklyAnalysisRecommendation {
   campaignId: string;
-  kind: "lower_bid" | "raise_budget" | "focus_target";
+  kind: "lower_budget" | "raise_budget" | "focus_target";
   title: string;
   detail: string;
   percent: number;

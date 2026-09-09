@@ -1,18 +1,18 @@
 import type {
+  AdType,
   Campaign,
-  CampaignChannel,
   CampaignIndustry,
-  CampaignObjective,
   CampaignStatus,
   DayMetric,
+  DisplayObjective,
   Targeting,
 } from "@/lib/mock/types";
 
-// D1(SQLite)에는 배열/JSON 타입이 없어 channels/targeting/history를 TEXT 컬럼에 JSON 문자열로 저장한다.
+// D1(SQLite)에는 배열/JSON 타입이 없어 targeting/history를 TEXT 컬럼에 JSON 문자열로 저장한다.
 export interface CampaignRow {
   id: string;
   name: string;
-  channels: string;
+  adType: string;
   objective: string;
   industry: string;
   status: string;
@@ -25,8 +25,8 @@ export function toCampaign(row: CampaignRow): Campaign {
   return {
     id: row.id,
     name: row.name,
-    channels: JSON.parse(row.channels) as CampaignChannel[],
-    objective: row.objective as CampaignObjective,
+    adType: row.adType as AdType,
+    objective: row.objective as DisplayObjective,
     industry: row.industry as CampaignIndustry,
     status: row.status as CampaignStatus,
     dailyBudget: row.dailyBudget,
@@ -39,7 +39,7 @@ export function toCampaignRow(campaign: Campaign): CampaignRow {
   return {
     id: campaign.id,
     name: campaign.name,
-    channels: JSON.stringify(campaign.channels),
+    adType: campaign.adType,
     objective: campaign.objective,
     industry: campaign.industry,
     status: campaign.status,

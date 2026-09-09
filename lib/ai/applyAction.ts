@@ -1,4 +1,4 @@
-import { adjustBudgetByPercent, adjustKeywordBidsByPercent, setStatus } from "../mock/store";
+import { adjustBudgetByPercent, setStatus } from "../mock/store";
 import type { AssistantAction } from "./types";
 
 export function applyAction(action: AssistantAction) {
@@ -12,9 +12,6 @@ export function applyAction(action: AssistantAction) {
       break;
     case "resume_campaign":
       setStatus(action.campaignId, "active");
-      break;
-    case "adjust_keyword_bids":
-      adjustKeywordBidsByPercent(action.campaignId, action.percent ?? 0);
       break;
     default:
       break;

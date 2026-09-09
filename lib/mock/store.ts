@@ -50,14 +50,6 @@ export function updateTargeting(id: string, targeting: Partial<Campaign["targeti
   return applyUpdate(() => repo.updateTargeting(id, targeting));
 }
 
-export function adjustKeywordBidsByPercent(id: string, percent: number) {
-  return applyUpdate(() => repo.adjustKeywordBidsByPercent(id, percent));
-}
-
-export function addKeywords(id: string, keywords: string[]) {
-  return applyUpdate(() => repo.addKeywords(id, keywords));
-}
-
 export function addCampaign(campaign: Campaign) {
   return applyUpdate(() => repo.addCampaign(campaign));
 }

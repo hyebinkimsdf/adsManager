@@ -1,5 +1,6 @@
-export type CampaignChannel = "search" | "social" | "display" | "video";
-export type CampaignObjective = "conversion" | "traffic" | "awareness" | "leads";
+export type AdType = "display" | "reward";
+/** 토스애즈 디스플레이 광고의 4가지 캠페인 목표(구매/앱설치/잠재고객/방문)와 동일한 구조 */
+export type DisplayObjective = "purchase" | "app_install" | "leads" | "visit";
 export type CampaignStatus = "active" | "paused";
 export type CampaignIndustry =
   | "food"
@@ -17,9 +18,6 @@ export interface Targeting {
   gender: "all" | "male" | "female";
   regions: string[];
   interests: string[];
-  keywords: string[];
-  /** 키워드별 설정 단가(원). 네이버 검색광고 API 추천 단가를 기본값으로 사용자가 조정할 수 있음 */
-  keywordBids?: Record<string, number>;
 }
 
 export interface DayMetric {
@@ -34,8 +32,9 @@ export interface DayMetric {
 export interface Campaign {
   id: string;
   name: string;
-  channels: CampaignChannel[];
-  objective: CampaignObjective;
+  /** 지금은 디스플레이 광고만 지원한다. 리워드 광고(머니알림·행운퀴즈 등)는 별도 캠페인 타입으로 추가 예정. */
+  adType: AdType;
+  objective: DisplayObjective;
   industry: CampaignIndustry;
   status: CampaignStatus;
   dailyBudget: number;

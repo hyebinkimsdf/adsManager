@@ -12,9 +12,9 @@ export async function POST() {
     for (const campaign of CAMPAIGNS) {
       const row = toCampaignRow(campaign);
       await d1Query(
-        `INSERT INTO Campaign (id, name, channels, objective, industry, status, dailyBudget, targeting, history)
+        `INSERT INTO Campaign (id, name, adType, objective, industry, status, dailyBudget, targeting, history)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [row.id, row.name, row.channels, row.objective, row.industry, row.status, row.dailyBudget, row.targeting, row.history]
+        [row.id, row.name, row.adType, row.objective, row.industry, row.status, row.dailyBudget, row.targeting, row.history]
       );
     }
     const rows = await d1Query<CampaignRow>("SELECT * FROM Campaign ORDER BY createdAt DESC");

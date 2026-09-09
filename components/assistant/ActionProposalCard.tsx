@@ -3,11 +3,9 @@
 
 import { css } from "@emotion/react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { HiCheck } from "react-icons/hi2";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { closeAssistantDock } from "@/lib/ui/assistantDock";
 import type { AssistantAction } from "@/lib/ai/types";
 
 const riskLabel: Record<AssistantAction["riskLevel"], { label: string; tone: "gray" | "blue" | "red" }> = {
@@ -25,8 +23,6 @@ export function ActionProposalCard({
 }) {
   const [status, setStatus] = useState<"pending" | "applied" | "dismissed">("pending");
   const risk = riskLabel[action.riskLevel];
-  const router = useRouter();
-  const isNavigateAction = action.type === "open_keyword_tool";
 
   return (
     <div
@@ -44,37 +40,21 @@ export function ActionProposalCard({
       <p css={{ marginBottom: "0.75rem", fontSize: 13, lineHeight: 1.6, color: "var(--color-gray-600)" }}>
         {action.description}
       </p>
-      {action.keywords && action.keywords.length > 0 && (
-        <div css={{ marginBottom: "0.75rem", display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
-          {action.keywords.map((k) => (
-            <Badge key={k} tone="blue">
-              {k}
-            </Badge>
-          ))}
-        </div>
-      )}
       {status === "pending" && (
         <div css={{ display: "flex", gap: "0.5rem" }}>
           <Button
             size="sm"
             variant="primary"
             onClick={() => {
-              if (isNavigateAction && action.campaignId) {
-                closeAssistantDock();
-                router.push(`/campaigns/${action.campaignId}`);
-                return;
-              }
               onApply(action);
               setStatus("applied");
             }}
           >
-            {isNavigateAction ? "키워드 도구 열기" : "적용"}
+            적용
           </Button>
-          {!isNavigateAction && (
-            <Button size="sm" variant="ghost" onClick={() => setStatus("dismissed")}>
-              무시
-            </Button>
-          )}
+          <Button size="sm" variant="ghost" onClick={() => setStatus("dismissed")}>
+            무시
+          </Button>
         </div>
       )}
       {status === "applied" && (

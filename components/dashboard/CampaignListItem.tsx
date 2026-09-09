@@ -4,30 +4,30 @@
 import { css } from "@emotion/react";
 import Link from "next/link";
 import {
-  HiOutlineMagnifyingGlass,
+  HiOutlineShoppingCart,
+  HiOutlineDevicePhoneMobile,
   HiOutlineChatBubbleLeftRight,
-  HiOutlinePhoto,
-  HiOutlineFilm,
+  HiOutlineArrowTrendingUp,
   HiOutlineTrash,
 } from "react-icons/hi2";
 import type { IconType } from "react-icons";
 import { Badge } from "@/components/ui/Badge";
 import { Toggle } from "@/components/ui/Toggle";
-import { CHANNEL_LABEL, sumHistory } from "@/lib/mock/campaigns";
+import { OBJECTIVE_LABEL, sumHistory } from "@/lib/mock/campaigns";
 import { setStatus, deleteCampaign } from "@/lib/mock/store";
 import { formatCompactKRW, formatPercent } from "@/lib/format";
-import type { Campaign, CampaignChannel } from "@/lib/mock/types";
+import type { Campaign, DisplayObjective } from "@/lib/mock/types";
 
-const CHANNEL_ICON: Record<CampaignChannel, IconType> = {
-  search: HiOutlineMagnifyingGlass,
-  social: HiOutlineChatBubbleLeftRight,
-  display: HiOutlinePhoto,
-  video: HiOutlineFilm,
+const OBJECTIVE_ICON: Record<DisplayObjective, IconType> = {
+  purchase: HiOutlineShoppingCart,
+  app_install: HiOutlineDevicePhoneMobile,
+  leads: HiOutlineChatBubbleLeftRight,
+  visit: HiOutlineArrowTrendingUp,
 };
 
 export function CampaignListItem({ campaign }: { campaign: Campaign }) {
   const totals = sumHistory(campaign.history);
-  const ChannelIcon = CHANNEL_ICON[campaign.channels[0]];
+  const ObjectiveIcon = OBJECTIVE_ICON[campaign.objective];
 
   return (
     <div
@@ -54,7 +54,7 @@ export function CampaignListItem({ campaign }: { campaign: Campaign }) {
           color: var(--color-gray-600);
         `}
       >
-        <ChannelIcon style={{ height: "1.25rem", width: "1.25rem" }} aria-hidden="true" />
+        <ObjectiveIcon style={{ height: "1.25rem", width: "1.25rem" }} aria-hidden="true" />
       </div>
       <div css={{ minWidth: 0, flex: 1 }}>
         <Link
@@ -76,11 +76,7 @@ export function CampaignListItem({ campaign }: { campaign: Campaign }) {
           {campaign.name}
         </Link>
         <div css={{ marginTop: "0.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          {campaign.channels.map((ch) => (
-            <Badge key={ch} tone="gray">
-              {CHANNEL_LABEL[ch]}
-            </Badge>
-          ))}
+          <Badge tone="gray">{OBJECTIVE_LABEL[campaign.objective]}</Badge>
           <span css={{ fontSize: 12, color: "var(--color-gray-500)" }}>
             ROAS {formatPercent(totals.roas, 0)} · 일 {formatCompactKRW(campaign.dailyBudget)}원
           </span>

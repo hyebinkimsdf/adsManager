@@ -35,7 +35,6 @@ export function mockAssistantReply(message: string, campaigns: CampaignSnapshot[
   const wantsResume = /(재개|다시\s*시작|켜줘|다시\s*켜)/.test(text);
   const wantsSummary = /(성과|어때|요약|현황|리포트)/.test(text);
   const wantsTargeting = /(타겟|타겟팅|연령|성별|지역)/.test(text);
-  const wantsKeywords = /(키워드)/.test(text);
 
   if (wantsRaise || wantsLower) {
     const target = mentioned ?? worstByRoas(campaigns) ?? campaigns[0];
@@ -96,24 +95,6 @@ export function mockAssistantReply(message: string, campaigns: CampaignSnapshot[
           label: "캠페인 재개",
           description: `${paused.name}을 다시 활성화해요.`,
           campaignId: paused.id,
-          riskLevel: "low",
-        },
-      ],
-    };
-  }
-
-  if (wantsKeywords) {
-    const target = mentioned ?? campaigns[0];
-    if (!target) return { reply: "키워드를 추천할 캠페인을 먼저 알려주세요.", actions: [] };
-    return {
-      reply: `${target.name}의 키워드는 실제 검색량·경쟁도 데이터를 보면서 정하는 게 정확해요. 키워드 도구를 열어드릴게요.`,
-      actions: [
-        {
-          id: nextId(),
-          type: "open_keyword_tool",
-          label: "키워드 도구 열기",
-          description: `${target.name}의 실제 검색량·경쟁도 기반 키워드 추천을 확인해요.`,
-          campaignId: target.id,
           riskLevel: "low",
         },
       ],

@@ -9,7 +9,6 @@ import {
   HiOutlineShoppingCart,
   HiOutlineArrowTrendingUp,
   HiOutlineArrowTrendingDown,
-  HiOutlineMegaphone,
   HiOutlineChatBubbleLeftRight,
   HiOutlineCake,
   HiOutlineSparkles,
@@ -20,17 +19,12 @@ import {
   HiOutlineBanknotes,
   HiOutlineDevicePhoneMobile,
   HiOutlineEllipsisHorizontalCircle,
-  HiOutlineMagnifyingGlass,
-  HiOutlineUserGroup,
-  HiOutlinePhoto,
-  HiOutlinePlay,
-  HiOutlineArrowUpCircle,
-  HiOutlineMinusCircle,
-  HiOutlineArrowDownCircle,
   HiOutlineIdentification,
   HiOutlineUser,
   HiOutlineUsers,
   HiOutlineCheckCircle,
+  HiSparkles,
+  HiOutlinePencilSquare,
 } from "react-icons/hi2";
 import type { IconType } from "react-icons";
 import { Card } from "@/components/ui/Card";
@@ -38,35 +32,33 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { OptionCard, OptionGrid } from "@/components/campaigns/OptionCard";
 import { WizardProgressBar } from "@/components/campaigns/WizardProgressBar";
-import { KeywordAssistant } from "@/components/campaigns/KeywordAssistant";
+import { EngineBadge } from "@/components/dashboard/EngineBadge";
 import { addCampaign } from "@/lib/mock/store";
-import { CHANNEL_LABEL, INDUSTRY_LABEL, OBJECTIVE_LABEL } from "@/lib/mock/campaigns";
-import { recommendAgeRanges } from "@/lib/ai/keywordHeuristics";
+import { INDUSTRY_LABEL, OBJECTIVE_LABEL } from "@/lib/mock/campaigns";
+import { useCampaignDraft } from "@/lib/ai/useCampaignDraft";
 import { formatKRW } from "@/lib/format";
-import type { Campaign, CampaignChannel, CampaignIndustry, CampaignObjective } from "@/lib/mock/types";
+import type { Campaign, CampaignIndustry, DisplayObjective } from "@/lib/mock/types";
+import type { CampaignDraftResult } from "@/lib/ai/useCampaignDraft";
 
-type Step = "objective" | "industry" | "channel" | "name" | "budget" | "ranking" | "keywords" | "age" | "gender" | "review";
+type Step = "objective" | "industry" | "name" | "budget" | "age" | "gender" | "review";
 
-const STEP_ORDER: Step[] = ["objective", "industry", "channel", "name", "budget", "ranking", "keywords", "age", "gender", "review"];
+const STEP_ORDER: Step[] = ["objective", "industry", "name", "budget", "age", "gender", "review"];
 
 const STEP_LABEL: Record<Step, string> = {
   objective: "목표 선택",
   industry: "업종 선택",
-  channel: "채널 선택",
   name: "캠페인 이름",
   budget: "예산 설정",
-  ranking: "노출 순위",
-  keywords: "키워드",
   age: "타겟 연령대",
   gender: "타겟 성별",
   review: "최종 확인",
 };
 
-const OBJECTIVES: { key: CampaignObjective; desc: string; icon: IconType; bg: string; color: string }[] = [
-  { key: "conversion", desc: "구매·가입 등 전환을 늘려요", icon: HiOutlineShoppingCart, bg: "var(--color-blue-50)", color: "var(--color-blue-600)" },
-  { key: "traffic", desc: "사이트 방문을 늘려요", icon: HiOutlineArrowTrendingUp, bg: "var(--color-green-50)", color: "var(--color-green-600)" },
-  { key: "awareness", desc: "브랜드를 더 많이 알려요", icon: HiOutlineMegaphone, bg: "var(--color-violet-50)", color: "var(--color-violet-600)" },
+const OBJECTIVES: { key: DisplayObjective; desc: string; icon: IconType; bg: string; color: string }[] = [
+  { key: "purchase", desc: "구매·주문을 늘려요", icon: HiOutlineShoppingCart, bg: "var(--color-blue-50)", color: "var(--color-blue-600)" },
+  { key: "app_install", desc: "앱 설치를 늘려요", icon: HiOutlineDevicePhoneMobile, bg: "var(--color-violet-50)", color: "var(--color-violet-600)" },
   { key: "leads", desc: "상담·문의를 모아요", icon: HiOutlineChatBubbleLeftRight, bg: "var(--color-yellow-50)", color: "var(--color-yellow-600)" },
+  { key: "visit", desc: "사이트 방문을 늘려요", icon: HiOutlineArrowTrendingUp, bg: "var(--color-green-50)", color: "var(--color-green-600)" },
 ];
 
 const INDUSTRIES: { key: CampaignIndustry; desc: string; icon: IconType; bg: string; color: string }[] = [
@@ -81,23 +73,10 @@ const INDUSTRIES: { key: CampaignIndustry; desc: string; icon: IconType; bg: str
   { key: "etc", desc: "위 업종에 해당하지 않아요", icon: HiOutlineEllipsisHorizontalCircle, bg: "var(--color-gray-100)", color: "var(--color-gray-600)" },
 ];
 
-const CHANNELS: { key: CampaignChannel; desc: string; icon: IconType; bg: string; color: string }[] = [
-  { key: "search", desc: "검색 결과에 노출돼요", icon: HiOutlineMagnifyingGlass, bg: "var(--color-blue-50)", color: "var(--color-blue-600)" },
-  { key: "social", desc: "SNS 피드에 노출돼요", icon: HiOutlineUserGroup, bg: "var(--color-violet-50)", color: "var(--color-violet-600)" },
-  { key: "display", desc: "다양한 사이트 배너로 노출돼요", icon: HiOutlinePhoto, bg: "var(--color-green-50)", color: "var(--color-green-600)" },
-  { key: "video", desc: "영상 콘텐츠 앞뒤로 노출돼요", icon: HiOutlinePlay, bg: "var(--color-red-50)", color: "var(--color-red-500)" },
-];
-
 const BUDGET_TIERS: { daily: number; label: string; note: string; icon: IconType; bg: string; color: string; recommended?: boolean }[] = [
   { daily: 30000, label: "적게 사용", note: "노출이 적어서 광고 효과가 약할 수 있어요", icon: HiOutlineArrowTrendingDown, bg: "var(--color-gray-100)", color: "var(--color-gray-600)" },
   { daily: 100000, label: "보통", note: "무난하게 효과를 볼 수 있는 금액이에요", icon: HiOutlineBanknotes, bg: "var(--color-blue-50)", color: "var(--color-blue-600)", recommended: true },
   { daily: 200000, label: "많이 사용", note: "더 많이 노출되지만 비용 부담이 커요", icon: HiOutlineArrowTrendingUp, bg: "var(--color-green-50)", color: "var(--color-green-600)" },
-];
-
-const RANKING_TIERS: { position: number; label: string; note: string; icon: IconType; bg: string; color: string; recommended?: boolean }[] = [
-  { position: 1, label: "가장 위", note: "가장 눈에 잘 띄지만 비용이 커요", icon: HiOutlineArrowUpCircle, bg: "var(--color-blue-50)", color: "var(--color-blue-600)" },
-  { position: 3, label: "중간 정도", note: "적당한 비용으로 무난하게 노출돼요", icon: HiOutlineMinusCircle, bg: "var(--color-gray-100)", color: "var(--color-gray-600)", recommended: true },
-  { position: 5, label: "저렴하게", note: "비용은 적지만 노출이 줄어요", icon: HiOutlineArrowDownCircle, bg: "var(--color-green-50)", color: "var(--color-green-600)" },
 ];
 
 const AGE_PRESETS = ["10대", "20대", "30대", "40대", "50대 이상", "전체"];
@@ -154,41 +133,89 @@ function BackButton({ onClick }: { onClick: () => void }) {
 export default function NewCampaignPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("objective");
-  const [objective, setObjective] = useState<CampaignObjective | null>(null);
+  const [objective, setObjective] = useState<DisplayObjective | null>(null);
   const [industry, setIndustry] = useState<CampaignIndustry | null>(null);
-  const [channels, setChannels] = useState<CampaignChannel[]>([]);
   const [name, setName] = useState("");
-  const [keywords, setKeywords] = useState<string[]>([]);
-  const [keywordBids, setKeywordBids] = useState<Record<string, number>>({});
   const [budget, setBudget] = useState<number | null>(null);
   const [budgetDraft, setBudgetDraft] = useState("");
-  const [targetPosition, setTargetPosition] = useState<number | null>(null);
   const [age, setAge] = useState<string[]>([]);
   const [gender, setGender] = useState<"all" | "male" | "female" | null>(null);
 
   const suggestedName = useMemo(() => {
-    if (!objective || !industry || channels.length === 0) return "";
-    return `${INDUSTRY_LABEL[industry]} ${OBJECTIVE_LABEL[objective]} · ${channels.map((c) => CHANNEL_LABEL[c]).join("/")} 캠페인`;
-  }, [objective, industry, channels]);
-
-  // 선택한 키워드에서 연령대를 암시하는 표현을 찾아 추천 태그로 보여준다. 키워드에 신호가 없으면 업종 기준으로 폴백한다.
-  const recommendedAges = useMemo(() => {
-    if (!industry) return [];
-    return recommendAgeRanges(keywords, industry);
-  }, [keywords, industry]);
+    if (!objective || !industry) return "";
+    return `${INDUSTRY_LABEL[industry]} ${OBJECTIVE_LABEL[objective]} 캠페인`;
+  }, [objective, industry]);
 
   const stepIndex = STEP_ORDER.indexOf(step);
+
+  const { generate: generateDraft } = useCampaignDraft();
+  const [aiDescription, setAiDescription] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<CampaignDraftResult | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiCreating, setAiCreating] = useState(false);
+
+  async function handleAiGenerate() {
+    if (!aiDescription.trim() || aiLoading) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+    try {
+      const result = await generateDraft(aiDescription.trim());
+      setAiResult(result);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "초안 생성에 실패했어요.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  // AI 초안을 그대로 캠페인으로 만든다 — 위저드를 거치지 않는 원클릭 경로. 타겟팅은 AI가 정하지 않는
+  // 값이라 가장 넓은 기본값(전체 연령·성별)으로 시작하고, 세부 조정은 캠페인 상세에서 이어서 한다.
+  async function handleAiCreateNow() {
+    if (!aiResult) return;
+    setAiCreating(true);
+    try {
+      const { draft } = aiResult;
+      const campaign: Campaign = {
+        id: nextId(),
+        name: draft.name.trim() || `${INDUSTRY_LABEL[draft.industry]} ${OBJECTIVE_LABEL[draft.objective]} 캠페인`,
+        adType: "display",
+        objective: draft.objective,
+        industry: draft.industry,
+        status: "active",
+        dailyBudget: draft.dailyBudget,
+        targeting: { ageRange: "전체", gender: "all", regions: ["전국"], interests: [] },
+        history: [],
+      };
+      await addCampaign(campaign);
+      router.push(`/campaigns/${campaign.id}`);
+    } finally {
+      setAiCreating(false);
+    }
+  }
+
+  // 타겟팅(연령·성별)까지 직접 정하고 싶을 때 — AI 초안 값을 위저드에 채워 넣고 "타겟 연령대" 단계부터 이어간다.
+  function handleAiRefine() {
+    if (!aiResult) return;
+    const { draft } = aiResult;
+    setObjective(draft.objective);
+    setIndustry(draft.industry);
+    setName(draft.name);
+    setBudget(draft.dailyBudget);
+    setStep("age");
+  }
 
   function goBack() {
     if (stepIndex > 0) setStep(STEP_ORDER[stepIndex - 1]);
   }
 
   async function createCampaign() {
-    if (!objective || !industry || channels.length === 0 || !budget || age.length === 0 || !gender) return;
+    if (!objective || !industry || !budget || age.length === 0 || !gender) return;
     const campaign: Campaign = {
       id: nextId(),
       name: name.trim() || suggestedName,
-      channels,
+      adType: "display",
       objective,
       industry,
       status: "active",
@@ -198,8 +225,6 @@ export default function NewCampaignPage() {
         gender,
         regions: ["전국"],
         interests: [],
-        keywords,
-        keywordBids: Object.keys(keywordBids).length > 0 ? keywordBids : undefined,
       },
       history: [],
     };
@@ -208,19 +233,94 @@ export default function NewCampaignPage() {
   }
 
   return (
-    <div
-      css={css`
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-        @media (min-width: 1024px) {
-          display: grid;
-          grid-template-columns: 1.1fr 0.9fr;
-          align-items: flex-start;
-          gap: 1.5rem;
-        }
-      `}
-    >
+    <div css={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+      <Card css={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+        <div css={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span
+            css={{
+              display: "flex",
+              height: "1.75rem",
+              width: "1.75rem",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "9999px",
+              backgroundColor: "var(--color-blue-50)",
+            }}
+          >
+            <HiSparkles style={{ height: "0.875rem", width: "0.875rem", color: "var(--color-blue-500)" }} aria-hidden="true" />
+          </span>
+          <h2 css={{ fontSize: 15, fontWeight: 700, color: "var(--color-gray-900)" }}>AI로 한 번에 만들기</h2>
+        </div>
+        <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>
+          어떤 광고를 만들고 싶은지 설명해주세요. 목표·업종·예산을 대신 정해서 바로 만들어드려요.
+        </p>
+        <div css={{ display: "flex", gap: "0.5rem" }}>
+          <input
+            value={aiDescription}
+            onChange={(e) => setAiDescription(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAiGenerate()}
+            placeholder="예: 온라인 쇼핑몰 매출을 늘리고 싶어요, 하루 10만원 정도 쓸 수 있어요"
+            css={inputStyle}
+          />
+          <Button size="lg" disabled={!aiDescription.trim() || aiLoading} onClick={handleAiGenerate}>
+            {aiLoading ? "생각하는 중..." : "AI로 초안 만들기"}
+          </Button>
+        </div>
+        {aiError && <p css={{ fontSize: 12.5, color: "var(--color-red-500)" }}>{aiError}</p>}
+
+        {aiResult && (
+          <div
+            css={css`
+              display: flex;
+              flex-direction: column;
+              gap: 0.75rem;
+              border-radius: var(--radius-md);
+              border: 1px solid var(--color-blue-100, var(--border-subtle));
+              background-color: var(--color-blue-50);
+              padding: 1rem;
+            `}
+          >
+            <div css={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div css={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                <Badge tone="blue">{OBJECTIVE_LABEL[aiResult.draft.objective]}</Badge>
+                <Badge tone="gray">{INDUSTRY_LABEL[aiResult.draft.industry]}</Badge>
+                <Badge tone="gray">일 {formatKRW(aiResult.draft.dailyBudget)}원</Badge>
+              </div>
+              <EngineBadge engine={aiResult.engine} />
+            </div>
+            <p css={{ fontSize: 14, fontWeight: 700, color: "var(--color-gray-900)" }}>{aiResult.draft.name}</p>
+            <p css={{ fontSize: 12.5, lineHeight: 1.6, color: "var(--color-gray-600)" }}>{aiResult.draft.reasoning}</p>
+            <div css={{ display: "flex", gap: "0.5rem" }}>
+              <Button disabled={aiCreating} onClick={handleAiCreateNow}>
+                {aiCreating ? (
+                  "만드는 중..."
+                ) : (
+                  <>
+                    <HiOutlineCheckCircle style={{ height: "1rem", width: "1rem" }} aria-hidden="true" /> 이 설정으로 캠페인 만들기
+                  </>
+                )}
+              </Button>
+              <Button variant="secondary" onClick={handleAiRefine}>
+                <HiOutlinePencilSquare style={{ height: "1rem", width: "1rem" }} aria-hidden="true" /> 직접 조정하기
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      <div
+        css={css`
+          display: flex;
+          flex-direction: column;
+          gap: 1.25rem;
+          @media (min-width: 1024px) {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            align-items: flex-start;
+            gap: 1.5rem;
+          }
+        `}
+      >
       <Card css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
         <div>
           <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>새 캠페인 만들기</h1>
@@ -259,9 +359,7 @@ export default function NewCampaignPage() {
 
           {step === "industry" && (
             <>
-              <h2 css={{ fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>
-                어떤 업종이에요? 업종에 맞는 키워드를 추천해드리려고요.
-              </h2>
+              <h2 css={{ fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>어떤 업종이에요?</h2>
               <OptionGrid columns={3}>
                 {INDUSTRIES.map((i) => (
                   <OptionCard
@@ -274,38 +372,11 @@ export default function NewCampaignPage() {
                     active={industry === i.key}
                     onClick={() => {
                       setIndustry(i.key);
-                      setStep("channel");
+                      setStep("name");
                     }}
                   />
                 ))}
               </OptionGrid>
-            </>
-          )}
-
-          {step === "channel" && (
-            <>
-              <h2 css={{ fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>
-                어떤 채널에 노출할까요? 여러 개를 함께 골라도 좋아요.
-              </h2>
-              <OptionGrid columns={2}>
-                {CHANNELS.map((c) => (
-                  <OptionCard
-                    key={c.key}
-                    icon={c.icon}
-                    iconBg={c.bg}
-                    iconColor={c.color}
-                    label={CHANNEL_LABEL[c.key]}
-                    desc={c.desc}
-                    active={channels.includes(c.key)}
-                    onClick={() =>
-                      setChannels((prev) => (prev.includes(c.key) ? prev.filter((x) => x !== c.key) : [...prev, c.key]))
-                    }
-                  />
-                ))}
-              </OptionGrid>
-              <Button size="lg" disabled={channels.length === 0} onClick={() => setStep("name")} css={{ alignSelf: "flex-start" }}>
-                다음
-              </Button>
             </>
           )}
 
@@ -347,7 +418,7 @@ export default function NewCampaignPage() {
                     }
                     onClick={() => {
                       setBudget(tier.daily);
-                      setStep("ranking");
+                      setStep("age");
                     }}
                   />
                 ))}
@@ -367,7 +438,7 @@ export default function NewCampaignPage() {
                     disabled={!budgetDraft}
                     onClick={() => {
                       setBudget(Number(budgetDraft));
-                      setStep("ranking");
+                      setStep("age");
                     }}
                   >
                     확인
@@ -382,63 +453,11 @@ export default function NewCampaignPage() {
             </>
           )}
 
-          {step === "ranking" && (
-            <>
-              <h2 css={{ fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>
-                광고가 검색했을 때 어느 정도 위치에 뜨면 좋을까요?
-              </h2>
-              <OptionGrid columns={3}>
-                {RANKING_TIERS.map((tier) => (
-                  <OptionCard
-                    key={tier.position}
-                    icon={tier.icon}
-                    iconBg={tier.bg}
-                    iconColor={tier.color}
-                    label={tier.label}
-                    desc={tier.note}
-                    badge={tier.recommended ? "추천" : undefined}
-                    active={targetPosition === tier.position}
-                    onClick={() => {
-                      setTargetPosition(tier.position);
-                      setStep("keywords");
-                    }}
-                  />
-                ))}
-              </OptionGrid>
-            </>
-          )}
-
-          {step === "keywords" && objective && industry && budget !== null && targetPosition !== null && (
-            <>
-              <h2 css={{ fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>
-                예산과 순위에 맞춰 키워드를 골라볼게요. 핵심 키워드를 알려주시면 AI가 자동으로 담아드려요.
-              </h2>
-              <KeywordAssistant
-                objective={objective}
-                channels={channels}
-                industry={industry}
-                name={name.trim()}
-                selected={keywords}
-                onChange={setKeywords}
-                onBidsChange={setKeywordBids}
-                dailyBudget={budget}
-                targetPosition={targetPosition}
-                onConfirm={() => setStep("age")}
-              />
-            </>
-          )}
-
           {step === "age" && (
             <>
               <h2 css={{ fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>
                 주요 타겟 연령대는요? 여러 개 골라도 좋아요.
               </h2>
-              {recommendedAges.length > 0 && (
-                <p css={{ fontSize: 12.5, color: "var(--color-gray-500)" }}>
-                  선택한 키워드를 분석해서 <span css={{ fontWeight: 600, color: "var(--color-blue-600)" }}>추천</span> 연령대를
-                  표시했어요.
-                </p>
-              )}
               <OptionGrid columns={3}>
                 {AGE_PRESETS.map((a) => (
                   <OptionCard
@@ -447,7 +466,6 @@ export default function NewCampaignPage() {
                     iconBg="var(--color-blue-50)"
                     iconColor="var(--color-blue-600)"
                     label={a}
-                    badge={recommendedAges.includes(a) ? "추천" : undefined}
                     active={age.includes(a)}
                     onClick={() => setAge((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]))}
                   />
@@ -511,11 +529,6 @@ export default function NewCampaignPage() {
           <div css={{ marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
             {industry && <Badge tone="gray">{INDUSTRY_LABEL[industry]}</Badge>}
             {objective && <Badge tone="blue">{OBJECTIVE_LABEL[objective]}</Badge>}
-            {channels.map((c) => (
-              <Badge key={c} tone="gray">
-                {CHANNEL_LABEL[c]}
-              </Badge>
-            ))}
             {age.map((a) => (
               <Badge key={a} tone="gray">
                 {a}
@@ -529,19 +542,11 @@ export default function NewCampaignPage() {
               {budget ? `${formatKRW(budget)}원` : "-"}
             </p>
           </div>
-          {keywords.length > 0 && (
-            <div css={{ marginTop: "0.75rem", display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
-              {keywords.map((k) => (
-                <Badge key={k} tone="blue">
-                  {k}
-                </Badge>
-              ))}
-            </div>
-          )}
           <Button css={{ marginTop: "1rem", width: "100%" }} disabled={step !== "review"} onClick={createCampaign}>
             캠페인 만들기
           </Button>
         </Card>
+      </div>
       </div>
     </div>
   );

@@ -18,7 +18,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const columns: Record<string, unknown> = {};
   if (patch.name !== undefined) columns.name = patch.name;
-  if (patch.channels !== undefined) columns.channels = JSON.stringify(patch.channels);
+  if (patch.adType !== undefined) columns.adType = patch.adType;
   if (patch.objective !== undefined) columns.objective = patch.objective;
   if (patch.industry !== undefined) columns.industry = patch.industry;
   if (patch.status !== undefined) columns.status = patch.status;

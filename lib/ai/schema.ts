@@ -20,13 +20,7 @@ export const ASSISTANT_RESPONSE_SCHEMA = {
           id: { type: "string" },
           type: {
             type: "string",
-            enum: [
-              "adjust_budget",
-              "pause_campaign",
-              "resume_campaign",
-              "open_keyword_tool",
-              "info",
-            ],
+            enum: ["adjust_budget", "pause_campaign", "resume_campaign", "info"],
           },
           label: { type: "string", description: "버튼에 들어갈 짧은 액션 이름" },
           description: { type: "string", description: "이 액션이 무엇을 바꾸는지 한 문장 설명" },
@@ -61,13 +55,7 @@ export const ASSISTANT_RESPONSE_SCHEMA_EN = {
           id: { type: "string" },
           type: {
             type: "string",
-            enum: [
-              "adjust_budget",
-              "pause_campaign",
-              "resume_campaign",
-              "open_keyword_tool",
-              "info",
-            ],
+            enum: ["adjust_budget", "pause_campaign", "resume_campaign", "info"],
           },
           label: { type: "string", description: "Short action name for the button, in English" },
           description: { type: "string", description: "One English sentence describing what this action changes" },

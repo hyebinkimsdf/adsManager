@@ -18,7 +18,7 @@ import type { IconType } from "react-icons";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { EngineBadge } from "@/components/dashboard/EngineBadge";
-import { adjustBudgetByPercent, adjustKeywordBidsByPercent } from "@/lib/mock/store";
+import { adjustBudgetByPercent } from "@/lib/mock/store";
 import { openAssistantDock } from "@/lib/ui/assistantDock";
 import type { WeeklyRecommendation } from "@/lib/insights";
 import type { EngineKind } from "@/lib/ai/types";
@@ -32,8 +32,9 @@ const TONE: Record<WeeklyRecommendation["tone"], { bg: string; color: string; ic
 type ApplyState = "idle" | "pending" | "done" | "error";
 
 async function applyRecommendation(item: WeeklyRecommendation) {
-  if (item.kind === "lower_bid") await adjustKeywordBidsByPercent(item.campaignId, item.percent);
-  if (item.kind === "raise_budget") await adjustBudgetByPercent(item.campaignId, item.percent);
+  if (item.kind === "lower_budget" || item.kind === "raise_budget") {
+    await adjustBudgetByPercent(item.campaignId, item.percent);
+  }
 }
 
 export function WeeklyRecommendationsCard({
