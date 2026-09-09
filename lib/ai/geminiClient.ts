@@ -4,7 +4,10 @@ import { WEEKLY_ANALYSIS_SYSTEM_PROMPT, buildWeeklyAnalysisUserTurn, type Weekly
 import { WEEKLY_ANALYSIS_RESPONSE_SCHEMA, type WeeklyAnalysisReply } from "./weeklyAnalysisSchema";
 import { CAMPAIGN_DRAFT_SYSTEM_PROMPT, buildCampaignDraftUserTurn } from "./campaignDraftPrompt";
 import { CAMPAIGN_DRAFT_RESPONSE_SCHEMA, isCampaignDraftSuggestion, type CampaignDraftSuggestion } from "./campaignDraftSchema";
+import { TRACKING_RULES_SYSTEM_PROMPT, buildTrackingRulesUserTurn } from "./trackingRulesPrompt";
+import { TRACKING_RULES_RESPONSE_SCHEMA, isTrackingRulesReply, type TrackingRulesReply } from "./trackingRulesSchema";
 import type { AssistantReply } from "./types";
+import type { SiteElement } from "@/lib/mock/types";
 
 const DEFAULT_MODEL = "gemini-flash-latest";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -142,4 +145,30 @@ export async function generateCampaignDraft(description: string): Promise<Campai
 
   const parsed = JSON.parse(text);
   return isCampaignDraftSuggestion(parsed) ? parsed : null;
+}
+
+export async function generateTrackingRules(elements: SiteElement[]): Promise<TrackingRulesReply | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const res = await callGemini(model, apiKey, {
+    systemInstruction: { parts: [{ text: TRACKING_RULES_SYSTEM_PROMPT }] },
+    contents: [{ role: "user", parts: [{ text: buildTrackingRulesUserTurn(elements) }] }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: toGeminiSchema(TRACKING_RULES_RESPONSE_SCHEMA),
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Gemini API 오류 (${res.status})`);
+  }
+
+  const data = (await res.json()) as GeminiGenerateContentResponse;
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) return null;
+
+  const parsed = JSON.parse(text);
+  return isTrackingRulesReply(parsed, elements.length) ? parsed : null;
 }
