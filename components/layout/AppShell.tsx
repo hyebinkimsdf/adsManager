@@ -19,6 +19,7 @@ import {
 import { AssistantDock } from "@/components/assistant/AssistantDock";
 import { ModeToggle } from "@/components/layout/ModeToggle";
 import { AccountModeMenu } from "@/components/layout/AccountModeMenu";
+import { useUiMode } from "@/lib/ui/mode";
 
 interface NavItem {
   href: string;
@@ -26,9 +27,18 @@ interface NavItem {
   icon: IconType;
 }
 
+type NavGroup = { label?: string; items: NavItem[] };
+
+// 간편 모드는 핵심 메뉴(홈·캠페인)만 보여준다 — 나머지 기능은 삭제하지 않고 전문가 모드에서
+// 그대로 접근할 수 있다. 새 캠페인 만들기는 캠페인 목록 화면 안의 버튼으로 계속 열려 있다.
+const SIMPLE_NAV_GROUPS: NavGroup[] = [
+  { items: [{ href: "/", label: "홈", icon: HiOutlineHome }] },
+  { items: [{ href: "/campaigns", label: "캠페인", icon: HiOutlineMegaphone }] },
+];
+
 // 데스크톱 사이드바에서만 그룹 라벨(광고/광고 도구 등)로 나눠 보여준다 — 토스애즈 광고주센터의
 // "디스플레이 광고 / 리워드 광고 / 광고 도구" 그룹 구성을 참고했다.
-const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
+const FULL_NAV_GROUPS: NavGroup[] = [
   { items: [{ href: "/", label: "홈", icon: HiOutlineHome }] },
   {
     label: "디스플레이 광고",
@@ -49,8 +59,6 @@ const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
   { label: "소재", items: [{ href: "/creatives", label: "AI 사전 심사", icon: HiOutlinePhoto }] },
   { label: "광고 도구", items: [{ href: "/tracking", label: "전환 및 추적 연동", icon: HiOutlineLink }] },
 ];
-
-const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -88,6 +96,9 @@ const mobileNavLinkStyle = (active: boolean) => css`
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const mode = useUiMode();
+  const navGroups = mode === "simple" ? SIMPLE_NAV_GROUPS : FULL_NAV_GROUPS;
+  const navItems = navGroups.flatMap((group) => group.items);
 
   return (
     <div
@@ -132,7 +143,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span css={{ fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>AI 광고 관리자</span>
         </div>
         <nav css={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          {NAV_GROUPS.map((group, i) => (
+          {navGroups.map((group, i) => (
             <div key={group.label ?? `group-${i}`} css={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
               {group.label && (
                 <p
@@ -234,7 +245,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span css={{ fontSize: 15, fontWeight: 700, color: "var(--color-gray-900)" }}>AI 광고 관리자</span>
         </div>
         <nav css={{ display: "flex", gap: "0.25rem" }}>
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = isActive(pathname, item.href);
             return (
               <Link key={item.href} href={item.href} css={mobileNavLinkStyle(active)}>

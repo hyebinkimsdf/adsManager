@@ -6,7 +6,7 @@ export type UiMode = "simple" | "expert";
 
 const STORAGE_KEY = "ads-dashboard-ui-mode-v1";
 
-let mode: UiMode = "expert";
+let mode: UiMode = "simple";
 let hydrated = false;
 const listeners = new Set<() => void>();
 
@@ -46,7 +46,7 @@ function getSnapshot(): UiMode {
 }
 
 function getServerSnapshot(): UiMode {
-  return "expert";
+  return "simple";
 }
 
 export function useUiMode(): UiMode {
