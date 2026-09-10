@@ -1,17 +1,5 @@
 import type { CampaignIndustry, DisplayObjective } from "@/lib/mock/types";
-
-const OBJECTIVES: DisplayObjective[] = ["purchase", "app_install", "leads", "visit"];
-const INDUSTRIES: CampaignIndustry[] = [
-  "food",
-  "beauty",
-  "education",
-  "medical",
-  "shopping",
-  "realestate",
-  "finance",
-  "it_app",
-  "etc",
-];
+import { INDUSTRIES, OBJECTIVES } from "@/lib/campaigns/validate";
 
 export const CAMPAIGN_DRAFT_RESPONSE_SCHEMA = {
   type: "object",

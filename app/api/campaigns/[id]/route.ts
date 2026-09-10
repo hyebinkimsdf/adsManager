@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { d1Query, isD1Configured } from "@/lib/d1";
 import { toCampaign, type CampaignRow } from "@/lib/campaigns/serialize";
-import type { Campaign } from "@/lib/mock/types";
+import { validateCampaignPatch } from "@/lib/campaigns/validate";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!isD1Configured()) {
@@ -9,12 +9,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   const { id } = await params;
 
-  let patch: Partial<Campaign>;
+  let body: unknown;
   try {
-    patch = (await req.json()) as Partial<Campaign>;
+    body = await req.json();
   } catch {
     return NextResponse.json({ error: "잘못된 요청 본문입니다." }, { status: 400 });
   }
+
+  const validated = validateCampaignPatch(body);
+  if (!validated.ok) {
+    return NextResponse.json({ error: validated.error }, { status: 400 });
+  }
+  const patch = validated.value;
 
   const columns: Record<string, unknown> = {};
   if (patch.name !== undefined) columns.name = patch.name;
