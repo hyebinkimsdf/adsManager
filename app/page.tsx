@@ -72,9 +72,15 @@ export default function HomePage() {
   const [weeklyAnalyzing, setWeeklyAnalyzing] = useState(false);
   const analyzedRef = useRef(false);
 
+  // weeklyAnalysis.state는 온디바이스 모델 준비 중에도 계속 바뀐다(checking → downloadable →
+  // downloading → available). 원본 state를 의존성으로 쓰면 분석이 진행되는 도중에도 effect가
+  // 재실행되어 진행 중이던 analyze() 호출이 취소된 것으로 처리되고, weeklyAnalyzing이 계속
+  // true로 남는 버그가 있었다. "checking 단계를 벗어났는지"만 boolean으로 추적해 한 번만 바뀌게 한다.
+  const readyToAnalyze = weeklyAnalysis.state !== "checking";
+
   useEffect(() => {
     if (mode !== "simple") return;
-    if (weeklyAnalysis.state === "checking") return;
+    if (!readyToAnalyze) return;
     if (analyzedRef.current) return;
     const inputs = buildWeeklyCampaignInputs(campaigns);
     if (inputs.length === 0) return;
@@ -108,7 +114,7 @@ export default function HomePage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, weeklyAnalysis.state]);
+  }, [mode, readyToAnalyze]);
 
   if (mode === "simple") {
     const last7Conversions = combine(campaigns, 7, "conversions");
