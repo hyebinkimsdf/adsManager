@@ -6,14 +6,22 @@ import { useRef, useState, useEffect, type FormEvent } from "react";
 import { HiSparkles } from "react-icons/hi2";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { EngineBadge } from "@/components/dashboard/EngineBadge";
 import { ChatBubble, TypingBubble } from "./ChatBubble";
 import { ActionProposalCard } from "./ActionProposalCard";
 import { AvailabilityBanner } from "./AvailabilityBanner";
 import { useLanguageModel } from "@/lib/ai/useLanguageModel";
 import { applyAction } from "@/lib/ai/applyAction";
 import { buildSnapshots } from "@/lib/ai/context";
-import { useCampaigns } from "@/lib/mock/store";
-import { useAssistantDockOpen, openAssistantDock, closeAssistantDock } from "@/lib/ui/assistantDock";
+import { handleBudgetRequest } from "@/lib/ai/budgetRequest";
+import { useCampaign, useCampaigns } from "@/lib/mock/store";
+import {
+  useAssistantDockOpen,
+  useAssistantDockFocusedCampaignId,
+  openAssistantDock,
+  closeAssistantDock,
+} from "@/lib/ui/assistantDock";
 import type { ChatTurn } from "@/lib/ai/types";
 
 const SUGGESTIONS = ["이번 주 성과 어때?", "예산 늘려줘", "성과 낮은 캠페인 알려줘", "키워드 추천해줘"];
@@ -22,6 +30,32 @@ let turnCounter = 0;
 function nextTurnId() {
   turnCounter += 1;
   return `turn-${turnCounter}`;
+}
+
+const pillStyle = css`
+  border-radius: 9999px;
+  border: 1px solid var(--border-subtle);
+  padding: 0.375rem 0.75rem;
+  font-size: 12px;
+  color: var(--color-gray-600);
+
+  &:hover {
+    border-color: var(--color-blue-500);
+    color: var(--color-blue-600);
+  }
+`;
+
+/** 긴 문장을 다시 타이핑하지 않도록, 눌러서 바로 보낼 수 있는 짧은 선택지 한 줄. */
+function QuickReplies({ items, onSelect }: { items: string[]; onSelect: (text: string) => void }) {
+  return (
+    <div css={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+      {items.map((item) => (
+        <button key={item} type="button" onClick={() => onSelect(item)} css={pillStyle}>
+          {item}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export function AssistantDock() {
@@ -39,6 +73,8 @@ export function AssistantDock() {
   ]);
   const { state, downloadProgress, ask } = useLanguageModel();
   const campaigns = useCampaigns();
+  const focusedCampaignId = useAssistantDockFocusedCampaignId();
+  const focusedCampaign = useCampaign(focusedCampaignId ?? "");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +90,17 @@ export function AssistantDock() {
     setInput("");
 
     const snapshots = buildSnapshots(campaigns);
+
+    // 예산 변경 요청은 대상·금액 해석을 온디바이스/클라우드/미리보기 엔진에 맡기지 않고
+    // 여기서 결정론적으로 먼저 처리한다 — 어떤 엔진이 떠 있어도 항상 같은 정확도를 보장하기 위함.
+    const budgetOutcome = handleBudgetRequest(trimmed, snapshots, focusedCampaignId);
+    if (budgetOutcome.kind !== "not_budget_request") {
+      setTurns((prev) =>
+        prev.map((t) => (t.id === pendingTurn.id ? { ...t, pending: false, reply: budgetOutcome.reply } : t))
+      );
+      return;
+    }
+
     const { reply, engine: engineUsed } = await ask(trimmed, snapshots);
 
     setTurns((prev) =>
@@ -143,6 +190,11 @@ export function AssistantDock() {
           </form>
         }
       >
+        {focusedCampaign && (
+          <div css={{ marginBottom: "0.5rem" }}>
+            <Badge tone="blue">{focusedCampaign.name} 보는 중</Badge>
+          </div>
+        )}
         <AvailabilityBanner state={state} downloadProgress={downloadProgress} />
         <div ref={scrollRef} css={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           {turns.map((turn) =>
@@ -155,46 +207,24 @@ export function AssistantDock() {
             ) : (
               <div key={turn.id} css={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <ChatBubble role="assistant">{turn.reply?.reply}</ChatBubble>
-                {turn.engineUsed === "preview" && (
-                  <span css={{ marginTop: "-0.25rem", fontSize: 11, color: "var(--color-gray-400)" }}>
-                    미리보기 응답이에요
-                  </span>
-                )}
-                {turn.engineUsed === "cloud" && (
-                  <span css={{ marginTop: "-0.25rem", fontSize: 11, color: "var(--color-gray-400)" }}>
-                    클라우드 AI로 답변했어요
-                  </span>
+                {turn.engineUsed && (
+                  <div css={{ marginTop: "-0.25rem" }}>
+                    <EngineBadge engine={turn.engineUsed} />
+                  </div>
                 )}
                 {turn.reply?.actions.map((action) => (
                   <ActionProposalCard key={action.id} action={action} onApply={applyAction} />
                 ))}
+                {turn.reply?.quickReplies && turn.reply.quickReplies.length > 0 && (
+                  <QuickReplies items={turn.reply.quickReplies} onSelect={send} />
+                )}
               </div>
             )
           )}
         </div>
         {turns.length <= 1 && (
-          <div css={{ marginTop: "1rem", display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-            {SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => send(s)}
-                css={css`
-                  border-radius: 9999px;
-                  border: 1px solid var(--border-subtle);
-                  padding: 0.375rem 0.75rem;
-                  font-size: 12px;
-                  color: var(--color-gray-600);
-
-                  &:hover {
-                    border-color: var(--color-blue-500);
-                    color: var(--color-blue-600);
-                  }
-                `}
-              >
-                {s}
-              </button>
-            ))}
+          <div css={{ marginTop: "1rem" }}>
+            <QuickReplies items={SUGGESTIONS} onSelect={send} />
           </div>
         )}
       </SlideOver>

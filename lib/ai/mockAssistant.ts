@@ -1,4 +1,4 @@
-import type { AssistantAction, AssistantReply, CampaignSnapshot } from "./types";
+import type { AssistantReply, CampaignSnapshot } from "./types";
 import { formatPercent } from "../format";
 
 let actionCounter = 0;
@@ -29,37 +29,12 @@ export function mockAssistantReply(message: string, campaigns: CampaignSnapshot[
   const text = message.trim();
   const mentioned = findCampaign(text, campaigns);
 
-  const wantsRaise = /(늘려|올려|증액|더 써|확대)/.test(text);
-  const wantsLower = /(줄여|낮춰|감액|아껴|축소)/.test(text);
+  // 예산 늘리기/줄이기 요청은 lib/ai/budgetRequest.ts가 모든 엔진 공통으로 먼저 가로채 처리한다 —
+  // 온디바이스/클라우드가 실패했을 때만 열리는 이 미리보기 경로까지는 도달하지 않는다.
   const wantsPause = /(멈춰|중지|정지|꺼줘|일시정지)/.test(text);
   const wantsResume = /(재개|다시\s*시작|켜줘|다시\s*켜)/.test(text);
   const wantsSummary = /(성과|어때|요약|현황|리포트)/.test(text);
   const wantsTargeting = /(타겟|타겟팅|연령|성별|지역)/.test(text);
-
-  if (wantsRaise || wantsLower) {
-    const target = mentioned ?? worstByRoas(campaigns) ?? campaigns[0];
-    if (!target) {
-      return { reply: "아직 등록된 캠페인이 없어요. 먼저 캠페인을 만들어볼까요?", actions: [] };
-    }
-    const percent = wantsRaise ? 15 : -15;
-    const action: AssistantAction = {
-      id: nextId(),
-      type: "adjust_budget",
-      label: `일 예산 ${percent > 0 ? "+15%" : "-15%"}`,
-      description: `${target.name}의 일 예산을 ${formatPercent(Math.abs(percent), 0)} ${
-        percent > 0 ? "늘려요" : "줄여요"
-      }.`,
-      campaignId: target.id,
-      percent,
-      riskLevel: "high",
-    };
-    return {
-      reply: `${target.name}은 최근 ROAS ${formatPercent(target.roas, 0)} 흐름이에요. 예산을 ${
-        percent > 0 ? "늘리는" : "줄이는"
-      } 제안을 준비했어요. 아래에서 확인하고 적용해 주세요.`,
-      actions: [action],
-    };
-  }
 
   if (wantsPause) {
     const target = mentioned ?? worstByRoas(campaigns);

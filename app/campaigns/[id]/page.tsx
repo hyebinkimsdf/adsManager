@@ -5,16 +5,19 @@ import { css } from "@emotion/react";
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { HiCheck, HiExclamationTriangle, HiSparkles } from "react-icons/hi2";
 import { useCampaign } from "@/lib/mock/store";
 import { updateBudget, setStatus, updateIndustry, deleteCampaign } from "@/lib/mock/store";
 import { sumHistory, OBJECTIVE_LABEL, INDUSTRY_LABEL } from "@/lib/mock/campaigns";
-import { formatCompactKRW, formatPercent } from "@/lib/format";
+import { isValidDailyBudget, MIN_DAILY_BUDGET, MAX_DAILY_BUDGET } from "@/lib/campaigns/validate";
+import { formatCompactKRW, formatKRW, formatPercent } from "@/lib/format";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Toggle } from "@/components/ui/Toggle";
 import { Button } from "@/components/ui/Button";
 import { SummaryCard } from "@/components/dashboard/SummaryCard";
 import { LineChart } from "@/components/dashboard/LineChart";
+import { openAssistantDock } from "@/lib/ui/assistantDock";
 import type { CampaignIndustry } from "@/lib/mock/types";
 
 const INDUSTRY_KEYS = Object.keys(INDUSTRY_LABEL) as CampaignIndustry[];
@@ -24,6 +27,8 @@ export default function CampaignDetailPage() {
   const router = useRouter();
   const campaign = useCampaign(params.id);
   const [budgetInput, setBudgetInput] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   if (!campaign) {
     return (
@@ -46,12 +51,32 @@ export default function CampaignDetailPage() {
 
   const totals = sumHistory(campaign.history);
   const editingValue = budgetInput ?? String(campaign.dailyBudget);
+  const parsedBudget = Number(editingValue.replace(/[^0-9]/g, ""));
+  const budgetError =
+    editingValue.trim() === ""
+      ? "일 예산을 입력해주세요."
+      : !isValidDailyBudget(parsedBudget)
+      ? `일 예산은 ${formatKRW(MIN_DAILY_BUDGET)}원~${formatKRW(MAX_DAILY_BUDGET)}원 사이의 정수로 입력해주세요.`
+      : null;
 
-  function saveBudget() {
-    const value = Number(editingValue.replace(/[^0-9]/g, ""));
-    if (!Number.isFinite(value)) return;
-    updateBudget(campaign!.id, value);
-    setBudgetInput(null);
+  function handleBudgetInputChange(raw: string) {
+    setBudgetInput(raw.replace(/[^0-9]/g, ""));
+    setSaveState("idle");
+  }
+
+  async function saveBudget() {
+    if (budgetError) return;
+    setSaveState("saving");
+    setSaveError(null);
+    try {
+      await updateBudget(campaign!.id, parsedBudget);
+      setSaveState("saved");
+      setBudgetInput(null); // 성공 후에만 초안을 비운다 — 그래야 입력창이 항상 확인된 값만 보여준다.
+    } catch (err) {
+      setSaveState("error");
+      setSaveError(err instanceof Error ? err.message : "저장하지 못했어요. 다시 시도해주세요.");
+      // budgetInput은 그대로 둔다 — 실패해도 사용자가 입력한 값을 잃지 않도록.
+    }
   }
 
   async function handleDelete() {
@@ -84,6 +109,9 @@ export default function CampaignDetailPage() {
         <div css={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Badge tone="gray">{INDUSTRY_LABEL[campaign.industry]}</Badge>
           <Badge tone="blue">{OBJECTIVE_LABEL[campaign.objective]}</Badge>
+          {campaign.metricSource !== "live" && (
+            <Badge tone="gray">{campaign.metricSource === "demo" ? "데모 데이터" : "실적 연동 전"}</Badge>
+          )}
         </div>
       </div>
 
@@ -145,15 +173,16 @@ export default function CampaignDetailPage() {
                   flex: 1;
                   align-items: center;
                   border-radius: var(--radius-sm);
-                  border: 1px solid var(--border-subtle);
+                  border: 1px solid ${budgetInput !== null && budgetError ? "var(--color-red-500)" : "var(--border-subtle)"};
                   background: var(--color-gray-50);
                   padding: 0.625rem 0.875rem;
                 `}
               >
                 <input
                   value={editingValue}
-                  onChange={(e) => setBudgetInput(e.target.value)}
+                  onChange={(e) => handleBudgetInputChange(e.target.value)}
                   inputMode="numeric"
+                  aria-invalid={budgetInput !== null && !!budgetError}
                   css={css`
                     width: 100%;
                     background: transparent;
@@ -165,10 +194,80 @@ export default function CampaignDetailPage() {
                 />
                 <span css={{ fontSize: 13, color: "var(--color-gray-500)" }}>원</span>
               </div>
-              <Button size="md" variant="secondary" onClick={saveBudget}>
-                저장
+              <Button size="md" variant="secondary" onClick={saveBudget} disabled={saveState === "saving" || !!budgetError}>
+                {saveState === "saving" ? "저장 중…" : "저장"}
               </Button>
             </div>
+
+            {budgetInput !== null && budgetError && (
+              <p css={{ marginTop: "0.375rem", fontSize: 12.5, color: "var(--color-red-500)" }}>{budgetError}</p>
+            )}
+            {saveState === "saved" && (
+              <p
+                css={{
+                  marginTop: "0.375rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem",
+                  fontSize: 12.5,
+                  fontWeight: 500,
+                  color: "var(--color-green-600)",
+                }}
+              >
+                <HiCheck style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" /> 저장했어요
+              </p>
+            )}
+            {saveState === "error" && (
+              <div css={{ marginTop: "0.375rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <p
+                  css={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.25rem",
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                    color: "var(--color-red-600)",
+                  }}
+                >
+                  <HiExclamationTriangle style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
+                  {saveError}
+                </p>
+                <button
+                  type="button"
+                  onClick={saveBudget}
+                  css={css`
+                    font-size: 12.5px;
+                    font-weight: 600;
+                    color: var(--color-blue-600);
+                    &:hover {
+                      color: var(--color-blue-700);
+                    }
+                  `}
+                >
+                  다시 시도
+                </button>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => openAssistantDock(campaign.id)}
+              css={css`
+                margin-top: 0.625rem;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.25rem;
+                font-size: 12.5px;
+                font-weight: 600;
+                color: var(--color-blue-600);
+                &:hover {
+                  color: var(--color-blue-700);
+                }
+              `}
+            >
+              <HiSparkles style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
+              AI에게 예산 변경 요청하기
+            </button>
           </div>
         </div>
       </Card>
