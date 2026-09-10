@@ -21,7 +21,10 @@ export async function getEvents(): Promise<ConversionEvent[]> {
   return fetchJson<ConversionEvent[]>(API_BASE);
 }
 
-/** 실제 pixel.js가 하는 일을 데모 화면에서 그대로 흉내내는 테스트 전송 — "전환 및 추적 연동" 페이지에서 쓴다. */
+/**
+ * 실제 pixel.js가 하는 일을 데모 화면에서 그대로 흉내내는 테스트 전송 — "전환 및 추적 연동" 페이지에서 쓴다.
+ * source: "test"로 명시해 실제 방문자 데이터(live)와 섞여 집계되지 않도록 한다.
+ */
 export async function sendTestEvent(
   campaignId: string,
   eventType: ConversionEventType,
@@ -30,6 +33,6 @@ export async function sendTestEvent(
   return fetchJson<ConversionEvent>(API_BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ campaignId, eventType, value }),
+    body: JSON.stringify({ campaignId, eventType, value, source: "test" }),
   });
 }

@@ -29,6 +29,7 @@ export function buildSeedEvents(): ConversionEvent[] {
           eventType: "page_view",
           value: 0,
           occurredAt: new Date(dayStart + Math.floor(rand() * DAY_MS)).toISOString(),
+          source: "legacy",
         });
       }
 
@@ -41,6 +42,7 @@ export function buildSeedEvents(): ConversionEvent[] {
           eventType: "purchase",
           value: Math.round(avgOrderValue * (0.85 + rand() * 0.3)),
           occurredAt: new Date(dayStart + Math.floor(rand() * DAY_MS)).toISOString(),
+          source: "legacy",
         });
       }
 
@@ -53,6 +55,7 @@ export function buildSeedEvents(): ConversionEvent[] {
           eventType: "lead_collection",
           value: 0,
           occurredAt: new Date(dayStart + Math.floor(rand() * DAY_MS)).toISOString(),
+          source: "legacy",
         });
       }
     }

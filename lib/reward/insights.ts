@@ -28,6 +28,7 @@ export function buildRewardRecommendations(
   rewardCampaigns: RewardCampaign[],
   events: ConversionEvent[]
 ): RewardRecommendation[] {
+  events = events.filter((event) => event.source === "live");
   const active = campaigns.filter((c) => c.status === "active");
   const totalsList = active.map((c) => sumHistory(c.history)).filter((t) => t.spend > 0);
   const avgRoas = totalsList.length > 0 ? totalsList.reduce((s, t) => s + t.roas, 0) / totalsList.length : 0;
@@ -46,7 +47,7 @@ export function buildRewardRecommendations(
     const reasons: string[] = [];
     if (purchaseCount > 0) {
       score += 15;
-      reasons.push(`최근 구매 전환이 ${purchaseCount}건 쌓여 있어 알림에 담을 실제 구매 사례가 있어요`);
+      reasons.push(`최근 수집 목록에 구매 완료 신고가 ${purchaseCount}건 있어요. 결제 원장과 대조한 구매 수는 아니에요`);
     }
     if (avgRoas >= 150) {
       score += 15;
@@ -78,10 +79,10 @@ export function buildRewardRecommendations(
     const reasons: string[] = [];
     if (visitCount > 0 && purchaseCount === 0) {
       score += 20;
-      reasons.push("방문은 있는데 아직 구매 전환이 없어, 논타겟으로 도달을 넓혀 인지도부터 쌓는 게 유리해요");
+      reasons.push("최근 수집 목록에 방문은 있고 구매 완료 신고는 없어요. 구매 추적이 정상인지 먼저 확인하세요");
     } else if (visitCount > purchaseCount * 3) {
       score += 12;
-      reasons.push(`방문(${visitCount}건) 대비 구매(${purchaseCount}건) 비율이 낮아 참여형으로 관심을 넓혀볼 만해요`);
+      reasons.push(`최근 수집 목록에 방문 ${visitCount}건, 구매 완료 신고 ${purchaseCount}건이 있어요. 전체 기간의 고객 전환율은 아니에요`);
     }
     if (active.length >= 3) {
       score += 8;
@@ -110,7 +111,7 @@ export function buildRewardRecommendations(
     }
     if (purchaseCount > 0 && visitCount > 0) {
       score += 10;
-      reasons.push("방문에서 구매까지 이어지는 흐름이 이미 검증돼 있어 랜딩 연결에 유리해요");
+      reasons.push("방문과 구매 완료 신고가 수집되고 있어요. 같은 고객의 행동인지와 광고 기여도는 별도 확인이 필요해요");
     }
     if (hasActive("button_press")) {
       score -= 20;

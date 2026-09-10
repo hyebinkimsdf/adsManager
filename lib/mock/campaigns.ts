@@ -56,6 +56,7 @@ export const CAMPAIGNS: Campaign[] = [
       interests: ["온라인 쇼핑", "패션"],
     },
     history: buildHistory(11, 118000, 0.15),
+    metricSource: "demo",
   },
   {
     id: "camp-visit-newlaunch",
@@ -72,6 +73,7 @@ export const CAMPAIGNS: Campaign[] = [
       interests: ["뷰티", "라이프스타일"],
     },
     history: buildHistory(27, 85000, -0.22),
+    metricSource: "demo",
   },
   {
     id: "camp-purchase-retarget",
@@ -88,6 +90,7 @@ export const CAMPAIGNS: Campaign[] = [
       interests: ["장바구니 이탈"],
     },
     history: buildHistory(41, 58000, 0.35),
+    metricSource: "demo",
   },
   {
     id: "camp-appinstall-service",
@@ -104,6 +107,7 @@ export const CAMPAIGNS: Campaign[] = [
       interests: ["앱테크", "테크 얼리어답터"],
     },
     history: buildHistory(59, 140000, -0.05),
+    metricSource: "demo",
   },
   {
     id: "camp-leads-finance",
@@ -120,6 +124,7 @@ export const CAMPAIGNS: Campaign[] = [
       interests: ["금융", "재테크"],
     },
     history: buildHistory(73, 68000, 0.08),
+    metricSource: "demo",
   },
 ];
 

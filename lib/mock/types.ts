@@ -22,6 +22,7 @@ export interface Targeting {
 
 export interface DayMetric {
   label: string; // "D-13" ~ "D-0"
+  date?: string; // YYYY-MM-DD, Asia/Seoul. 날짜 없는 기존 기록은 실적 집계에서 제외한다.
   spend: number;
   impressions: number;
   clicks: number;
@@ -40,6 +41,7 @@ export interface Campaign {
   dailyBudget: number;
   targeting: Targeting;
   history: DayMetric[];
+  metricSource?: "demo" | "live" | "unverified";
 }
 
 /** 토스 픽셀/전환추적코드가 실제로 수집하는 이벤트 목록 중, 이 프로젝트에서 다루는 핵심 8종 */
@@ -49,8 +51,10 @@ export type ConversionEventType =
   | "add_to_cart"
   | "signup"
   | "lead_collection"
+  | "lead_intent"
   | "app_install"
   | "purchase"
+  | "purchase_intent"
   | "subscribe";
 
 export interface ConversionEvent {
@@ -60,6 +64,9 @@ export interface ConversionEvent {
   /** 이벤트에 연결된 금액(원). 구매가 아니면 보통 0. */
   value: number;
   occurredAt: string; // ISO 8601
+  source?: "live" | "test" | "legacy";
+  eventId?: string | null;
+  orderId?: string | null;
 }
 
 /** pixel.js가 사이트에 설치되는 순간 크롤링해서 찾아내는 클릭 가능한 요소 하나. */

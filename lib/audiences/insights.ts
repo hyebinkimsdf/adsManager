@@ -19,6 +19,7 @@ export interface AudienceRecommendation {
  * lib/insights.ts의 규칙 기반 폴백과 같은 접근이다 — AI 호출 없이도 바로 쓸 수 있는 결정론적 추천.
  */
 export function buildAudienceRecommendations(campaigns: Campaign[], events: ConversionEvent[]): AudienceRecommendation[] {
+  events = events.filter((event) => event.source === "live");
   const stats = campaigns.map((c) => {
     const visits = events.filter((e) => e.campaignId === c.id && e.eventType === "page_view").length;
     const purchases = events.filter((e) => e.campaignId === c.id && e.eventType === "purchase").length;
@@ -36,9 +37,7 @@ export function buildAudienceRecommendations(campaigns: Campaign[], events: Conv
     results.push({
       id: `recover-${needsRecovery.campaign.id}`,
       title: `${needsRecovery.campaign.name} 방문자를 리타겟팅해보세요`,
-      detail: `방문 ${needsRecovery.visits}건 중 구매는 ${needsRecovery.purchases}건(${needsRecovery.rate.toFixed(
-        1
-      )}%)에 그쳤어요. 구매 없이 떠난 방문자에게 다시 노출하면 회수할 여지가 있어요.`,
+      detail: `최근 수집 목록에 방문 ${needsRecovery.visits}건, 구매 완료 신고 ${needsRecovery.purchases}건이 있어요. 동일 방문자의 구매 여부와 전체 기간 성과는 확인되지 않아, 타겟 조건 검토용 초안으로 사용하세요.`,
       buttonLabel: "이 타겟 바로 만들기",
       estimatedSize: estimateRetargetingSize(events, sourceCampaignIds, "visit"),
       draft: { type: "retargeting", name: `${needsRecovery.campaign.name} 방문 리타겟팅`, sourceCampaignIds, action: "visit" },
@@ -50,9 +49,7 @@ export function buildAudienceRecommendations(campaigns: Campaign[], events: Conv
     results.push({
       id: `exclude-buyers-${bestConverting.campaign.id}`,
       title: "이미 구매한 고객은 제외하고 신규 고객을 늘려보세요",
-      detail: `${bestConverting.campaign.name}은 방문 대비 구매 전환율이 ${bestConverting.rate.toFixed(
-        1
-      )}%로 높아요. 이미 구매한 사람을 제외하면 광고비가 새로운 고객에게 더 집중돼요.`,
+      detail: `${bestConverting.campaign.name}에 구매 완료 신고 ${bestConverting.purchases}건이 수집됐어요. 고유 구매 고객 수와 매체 고객 식별 연동을 확인한 뒤 제외 조건을 검토하세요.`,
       buttonLabel: "이 타겟 바로 만들기",
       estimatedSize: events.filter((e) => e.eventType === "purchase").length,
       draft: { type: "conversion", name: "최근 구매 고객 제외", eventType: "purchase", lookbackDays: 30, mode: "exclude" },

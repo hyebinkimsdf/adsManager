@@ -47,7 +47,11 @@ function FunnelBar({ label, value, max, sublabel }: { label: string; value: numb
 
 export default function MeasurementPage() {
   const campaigns = useCampaigns();
-  const events = useConversionEvents();
+  // 데모 시드(legacy)·관리자 테스트 전송(test)은 실제 방문자 행동이 아니므로 제외한다 —
+  // 이 화면은 "전환 추적으로 수집된 실제 데이터"를 보여준다고 명시하고 있어 섞이면 숫자가 부풀려진다.
+  const allEvents = useConversionEvents();
+  const events = allEvents.filter((e) => e.source === "live");
+  const hasLiveData = events.length > 0;
 
   const adTotals = campaigns.reduce(
     (acc, c) => {
@@ -100,6 +104,24 @@ export default function MeasurementPage() {
           광고 이후 고객이 실제로 어떻게 행동했는지, 전환 추적으로 수집된 데이터로 확인해보세요.
         </p>
       </div>
+
+      {!hasLiveData && (
+        <div
+          css={{
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--color-amber-200, #fde68a)",
+            background: "var(--color-amber-50, #fffbeb)",
+            padding: "0.75rem 1rem",
+            fontSize: 13,
+            color: "var(--color-gray-700)",
+          }}
+        >
+          아직 이 사이트에서 수집된 실제 전환 이벤트가 없어요. 아래 수치는 모두 0이에요 — 데모/테스트 전송은 집계에서 제외했어요.{" "}
+          <Link href="/tracking" css={{ color: "var(--color-blue-600)", fontWeight: 500 }}>
+            연동 코드 확인하기
+          </Link>
+        </div>
+      )}
 
       <div
         css={css`

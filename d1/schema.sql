@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS Campaign (
   dailyBudget INTEGER NOT NULL,
   targeting TEXT NOT NULL,  -- JSON 객체로 저장
   history TEXT NOT NULL,    -- JSON 배열로 저장
+  -- demo(시드) / live(실제 매체 연동 확인) / unverified(사용자가 만들었지만 아직 실적 연동 전).
+  -- 화면·AI가 "실데이터"로 표시해도 되는지 판단하는 근거이며, 기본값은 안전한 쪽인 unverified.
+  metricSource TEXT NOT NULL DEFAULT 'unverified',
   createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updatedAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
@@ -19,11 +22,21 @@ CREATE TABLE IF NOT EXISTS ConversionEvent (
   eventType TEXT NOT NULL,
   value INTEGER NOT NULL DEFAULT 0,
   occurredAt TEXT NOT NULL,
+  -- live(pixel.js 실제 수집) / test(관리자 화면의 테스트 전송) / legacy(source 도입 이전 시드·과거 데이터).
+  -- 집계·추천 로직은 live만 사실로 취급한다.
+  source TEXT NOT NULL DEFAULT 'legacy',
+  -- 클라이언트가 재전송/재시도해도 같은 행동을 두 번 세지 않기 위한 멱등키(선택).
+  eventId TEXT,
+  -- 결제 완료 이벤트의 이중 집계를 막기 위한 주문 단위 멱등키(선택).
+  orderId TEXT,
   createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_conversion_event_campaign ON ConversionEvent(campaignId);
 CREATE INDEX IF NOT EXISTS idx_conversion_event_occurred ON ConversionEvent(occurredAt);
+CREATE INDEX IF NOT EXISTS idx_conversion_event_source ON ConversionEvent(source);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conversion_event_event_id ON ConversionEvent(eventId) WHERE eventId IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conversion_event_campaign_order ON ConversionEvent(campaignId, orderId) WHERE orderId IS NOT NULL;
 
 -- pixel.js가 설치된 사이트를 방문자 브라우저에서 직접 크롤링해 보낸 결과. 캠페인당 최신 1건만 유지한다.
 CREATE TABLE IF NOT EXISTS SiteScan (

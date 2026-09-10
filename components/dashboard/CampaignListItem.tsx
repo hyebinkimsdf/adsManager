@@ -77,6 +77,9 @@ export function CampaignListItem({ campaign }: { campaign: Campaign }) {
         </Link>
         <div css={{ marginTop: "0.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Badge tone="gray">{OBJECTIVE_LABEL[campaign.objective]}</Badge>
+          {campaign.metricSource !== "live" && (
+            <Badge tone="gray">{campaign.metricSource === "demo" ? "데모 데이터" : "실적 연동 전"}</Badge>
+          )}
           <span css={{ fontSize: 12, color: "var(--color-gray-500)" }}>
             ROAS {formatPercent(totals.roas, 0)} · 일 {formatCompactKRW(campaign.dailyBudget)}원
           </span>

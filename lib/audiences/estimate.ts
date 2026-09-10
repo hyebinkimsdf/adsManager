@@ -7,13 +7,13 @@ export function estimateRetargetingSize(
   action: "visit" | "purchase"
 ): number {
   const eventType: ConversionEventType = action === "visit" ? "page_view" : "purchase";
-  return events.filter((e) => sourceCampaignIds.includes(e.campaignId) && e.eventType === eventType).length;
+  return events.filter((e) => e.source === "live" && sourceCampaignIds.includes(e.campaignId) && e.eventType === eventType).length;
 }
 
 /** 최근 lookbackDays일 내 eventType이 발생한 이벤트 수 — 전환추적 타겟 규모 추정에 쓴다. */
 export function estimateConversionSize(events: ConversionEvent[], eventType: ConversionEventType, lookbackDays: number): number {
   const cutoff = Date.now() - lookbackDays * 24 * 60 * 60 * 1000;
-  return events.filter((e) => e.eventType === eventType && new Date(e.occurredAt).getTime() >= cutoff).length;
+  return events.filter((e) => e.source === "live" && e.eventType === eventType && new Date(e.occurredAt).getTime() >= cutoff).length;
 }
 
 export const LOOKBACK_OPTIONS = [2, 3, 5, 7, 14, 30, 90, 180] as const;

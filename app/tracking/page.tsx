@@ -401,6 +401,11 @@ export default function TrackingPage() {
                   `}
                 >
                   <Badge tone={e.eventType === "purchase" ? "blue" : "gray"}>{EVENT_LABEL[e.eventType]}</Badge>
+                  {e.source !== "live" && (
+                    <Badge tone={e.source === "test" ? "gray" : "gray"}>
+                      {e.source === "test" ? "테스트 전송" : "데모 데이터"}
+                    </Badge>
+                  )}
                   <span css={{ flex: 1, fontSize: 12.5, color: "var(--color-gray-500)" }}>{formatDateTime(e.occurredAt)}</span>
                   <span css={{ fontSize: 13, fontWeight: 600, color: "var(--color-gray-800)" }}>
                     {e.value > 0 ? `${formatKRW(e.value)}원` : "-"}
