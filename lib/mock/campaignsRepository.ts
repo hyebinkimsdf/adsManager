@@ -1,5 +1,5 @@
 import { CAMPAIGNS } from "./campaigns";
-import type { Campaign } from "./types";
+import type { Campaign, Targeting } from "./types";
 
 const API_BASE = "/api/campaigns";
 
@@ -12,18 +12,13 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-async function patchCampaign(id: string, patch: Partial<Campaign>): Promise<Campaign[]> {
-  await fetchJson(`${API_BASE}/${id}`, {
+// PATCH 응답에 이미 갱신된 캠페인 전체가 담겨 있으므로, 호출부가 최신 값을 다시 조회할 필요가 없다.
+function patchCampaign(id: string, patch: Partial<Campaign>): Promise<Campaign> {
+  return fetchJson<Campaign>(`${API_BASE}/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
   });
-  return getCampaigns();
-}
-
-async function findCampaign(id: string): Promise<Campaign | undefined> {
-  const campaigns = await getCampaigns();
-  return campaigns.find((c) => c.id === id);
 }
 
 // 서버 첫 응답이 오기 전 화면이 비어 보이지 않도록 쓰는 동기 시드 스냅샷. 실제 데이터는
@@ -32,49 +27,40 @@ export function getCampaignsSeed(): Campaign[] {
   return CAMPAIGNS;
 }
 
-export async function getCampaigns(): Promise<Campaign[]> {
+export function getCampaigns(): Promise<Campaign[]> {
   return fetchJson<Campaign[]>(API_BASE);
 }
 
-export async function updateBudget(id: string, dailyBudget: number) {
+export function updateBudget(id: string, dailyBudget: number): Promise<Campaign> {
   return patchCampaign(id, { dailyBudget: Math.max(0, Math.round(dailyBudget)) });
 }
 
-export async function adjustBudgetByPercent(id: string, percent: number) {
-  const campaign = await findCampaign(id);
-  if (!campaign) return getCampaigns();
-  const dailyBudget = Math.max(0, Math.round(campaign.dailyBudget * (1 + percent / 100)));
-  return patchCampaign(id, { dailyBudget });
-}
-
-export async function setStatus(id: string, status: Campaign["status"]) {
+export function setStatus(id: string, status: Campaign["status"]): Promise<Campaign> {
   return patchCampaign(id, { status });
 }
 
-export async function updateTargeting(id: string, targeting: Partial<Campaign["targeting"]>) {
-  const campaign = await findCampaign(id);
-  if (!campaign) return getCampaigns();
-  return patchCampaign(id, { targeting: { ...campaign.targeting, ...targeting } });
+// 퍼센트 계산과 targeting 병합에 필요한 "현재 값"은 호출부(store.ts)가 이미 들고 있는 캐시에서 읽는다 —
+// 여기서 다시 목록을 조회하지 않는다.
+export function updateTargeting(id: string, targeting: Targeting): Promise<Campaign> {
+  return patchCampaign(id, { targeting });
 }
 
-export async function addCampaign(campaign: Campaign) {
-  await fetchJson(API_BASE, {
+export function addCampaign(campaign: Campaign): Promise<Campaign> {
+  return fetchJson<Campaign>(API_BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(campaign),
   });
-  return getCampaigns();
 }
 
-export async function deleteCampaign(id: string) {
+export async function deleteCampaign(id: string): Promise<void> {
   await fetchJson(`${API_BASE}/${id}`, { method: "DELETE" });
-  return getCampaigns();
 }
 
-export async function updateIndustry(id: string, industry: Campaign["industry"]) {
+export function updateIndustry(id: string, industry: Campaign["industry"]): Promise<Campaign> {
   return patchCampaign(id, { industry });
 }
 
-export async function resetToSeed() {
+export function resetToSeed(): Promise<Campaign[]> {
   return fetchJson<Campaign[]>(`${API_BASE}/reset`, { method: "POST" });
 }
