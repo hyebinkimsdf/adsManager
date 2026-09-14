@@ -1,40 +1,60 @@
 import { NextResponse } from "next/server";
 import { d1Query, isD1Configured } from "@/lib/d1";
-import { CAMPAIGNS } from "@/lib/mock/campaigns";
 import { toCampaign, toCampaignRow, type CampaignRow } from "@/lib/campaigns/serialize";
 import { validateCampaignCreate } from "@/lib/campaigns/validate";
+import { ensureSeeded } from "@/lib/campaigns/ensureSeed";
+import { MY_OWNER_ID } from "@/lib/campaigns/owner";
 
-// 배포 직후 DB가 비어 있으면 데모용 시드 캠페인을 한 번만 채워 넣는다.
-// count 확인 자체가 매 GET마다 D1 REST 호출 1회를 더 쓰므로, 워밍업된 서버 인스턴스에서는
-// 한 번 확인한 뒤 다시 확인하지 않는다(콜드 스타트마다 한 번씩만 다시 확인).
-let seeded = false;
-async function ensureSeeded() {
-  if (seeded) return;
-  const [{ count }] = await d1Query<{ count: number }>("SELECT COUNT(*) as count FROM Campaign");
-  if (count > 0) {
-    seeded = true;
-    return;
-  }
+const MAX_PAGE_LIMIT = 100;
+const DEFAULT_PAGE_LIMIT = 20;
 
-  for (const campaign of CAMPAIGNS) {
-    const row = toCampaignRow(campaign);
-    await d1Query(
-      `INSERT INTO Campaign (id, name, adType, objective, industry, status, dailyBudget, targeting, history, metricSource)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [row.id, row.name, row.adType, row.objective, row.industry, row.status, row.dailyBudget, row.targeting, row.history, row.metricSource]
-    );
-  }
-  seeded = true;
-}
-
-export async function GET() {
+// 목록 페이지처럼 필요한 곳만 opt-in 하도록, limit 파라미터가 없으면 기존과 동일하게 전체를
+// 반환한다(다른 화면들이 여전히 이 무제한 응답에 의존하고 있어 하위호환을 깨지 않기 위함).
+export async function GET(req: Request) {
   if (!isD1Configured()) {
     return NextResponse.json({ error: "Cloudflare D1이 설정되지 않았습니다." }, { status: 501 });
   }
   try {
     await ensureSeeded();
-    const rows = await d1Query<CampaignRow>("SELECT * FROM Campaign ORDER BY createdAt DESC");
-    return NextResponse.json(rows.map(toCampaign));
+
+    const url = new URL(req.url);
+    const limitParam = url.searchParams.get("limit");
+    if (!limitParam) {
+      const rows = await d1Query<CampaignRow>(
+        "SELECT * FROM Campaign WHERE ownerId = ? ORDER BY createdAt DESC, id DESC",
+        [MY_OWNER_ID]
+      );
+      return NextResponse.json(rows.map(toCampaign));
+    }
+
+    const limit = Math.min(MAX_PAGE_LIMIT, Math.max(1, Number(limitParam) || DEFAULT_PAGE_LIMIT));
+    const cursor = url.searchParams.get("cursor");
+
+    let rows: CampaignRow[];
+    if (cursor) {
+      const separatorIndex = cursor.lastIndexOf("|");
+      const cursorCreatedAt = separatorIndex >= 0 ? cursor.slice(0, separatorIndex) : "";
+      const cursorId = separatorIndex >= 0 ? cursor.slice(separatorIndex + 1) : "";
+      if (!cursorCreatedAt || !cursorId) {
+        return NextResponse.json({ error: "잘못된 cursor입니다." }, { status: 400 });
+      }
+      // id(PK)를 2차 정렬키로 묶는 keyset pagination — createdAt에 인덱스가 없고 값이 중복될 수
+      // 있어도 (createdAt, id) 조합은 항상 유일해서 커서가 안정적으로 다음 페이지를 가리킨다.
+      rows = await d1Query<CampaignRow>(
+        `SELECT * FROM Campaign WHERE ownerId = ? AND ((createdAt < ?) OR (createdAt = ? AND id < ?))
+         ORDER BY createdAt DESC, id DESC LIMIT ?`,
+        [MY_OWNER_ID, cursorCreatedAt, cursorCreatedAt, cursorId, limit]
+      );
+    } else {
+      rows = await d1Query<CampaignRow>(
+        "SELECT * FROM Campaign WHERE ownerId = ? ORDER BY createdAt DESC, id DESC LIMIT ?",
+        [MY_OWNER_ID, limit]
+      );
+    }
+
+    const last = rows.at(-1);
+    const nextCursor = rows.length === limit && last?.createdAt ? `${last.createdAt}|${last.id}` : null;
+    return NextResponse.json({ items: rows.map(toCampaign), nextCursor });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -64,9 +84,9 @@ export async function POST(req: Request) {
     // 화면·AI가 이 캠페인의 history를 "실데이터"로 취급하지 않도록 하는 근거.
     const row = toCampaignRow({ ...campaign, metricSource: "unverified" });
     await d1Query(
-      `INSERT INTO Campaign (id, name, adType, objective, industry, status, dailyBudget, targeting, history, metricSource)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [row.id, row.name, row.adType, row.objective, row.industry, row.status, row.dailyBudget, row.targeting, row.history, row.metricSource]
+      `INSERT INTO Campaign (id, name, adType, objective, industry, status, dailyBudget, targeting, history, metricSource, ownerId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [row.id, row.name, row.adType, row.objective, row.industry, row.status, row.dailyBudget, row.targeting, row.history, row.metricSource, MY_OWNER_ID]
     );
     return NextResponse.json(toCampaign(row), { status: 201 });
   } catch (err) {

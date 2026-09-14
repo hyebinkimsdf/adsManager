@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { d1Query, isD1Configured } from "@/lib/d1";
-import { buildSeedEvents } from "@/lib/tracking/seed";
 import { EVENT_ORDER } from "@/lib/tracking/events";
 import { assertTrackingSchema, trackingError } from "@/lib/tracking/server";
 import type { EventSource } from "@/lib/tracking/measurement";
@@ -15,45 +14,12 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-function chunk<T>(items: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
-  return out;
-}
-
-// 배포 직후 이벤트가 하나도 없으면 캠페인 지표 기반 데모 이벤트를 한 번만 채워 넣는다.
-// 데모 이벤트는 source='legacy'로 저장돼 live 집계·추천 로직에서 항상 제외된다.
-// (한 번의 INSERT에 너무 많은 바인딩 파라미터가 몰리지 않도록 25건씩 나눠 넣는다.)
-// count 확인이 매 GET/POST마다 D1 REST 호출 1회를 더 쓰므로, 워밍업된 서버 인스턴스에서는
-// 한 번 확인한 뒤 다시 확인하지 않는다(콜드 스타트마다 한 번씩만 다시 확인).
-let seeded = false;
-async function ensureSeeded() {
-  if (seeded) return;
-  const [{ count }] = await d1Query<{ count: number }>("SELECT COUNT(*) as count FROM ConversionEvent");
-  if (count > 0) {
-    seeded = true;
-    return;
-  }
-
-  // D1은 한 문장에 바인딩할 수 있는 파라미터 수에 제한이 있어(대략 100개) 6개 컬럼 기준 15건씩 나눠 넣는다.
-  for (const batch of chunk(buildSeedEvents(), 15)) {
-    const placeholders = batch.map(() => "(?, ?, ?, ?, ?, ?)").join(", ");
-    const params = batch.flatMap((e) => [e.id, e.campaignId, e.eventType, e.value, e.occurredAt, e.source ?? "legacy"]);
-    await d1Query(
-      `INSERT INTO ConversionEvent (id, campaignId, eventType, value, occurredAt, source) VALUES ${placeholders}`,
-      params
-    );
-  }
-  seeded = true;
-}
-
 export async function GET(req: Request) {
   if (!isD1Configured()) {
     return NextResponse.json({ error: "Cloudflare D1이 설정되지 않았습니다." }, { status: 501 });
   }
   try {
     await assertTrackingSchema();
-    await ensureSeeded();
     const campaignId = new URL(req.url).searchParams.get("campaignId");
     const rows = campaignId
       ? await d1Query<ConversionEvent>(

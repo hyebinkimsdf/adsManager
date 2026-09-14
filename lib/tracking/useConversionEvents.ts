@@ -6,11 +6,13 @@ import type { ConversionEvent } from "@/lib/mock/types";
 
 export const conversionEventsQueryKey = ["conversion-events"] as const;
 
-export function useConversionEvents(): ConversionEvent[] {
-  const { data } = useQuery({
+export function useConversionEventsQuery() {
+  return useQuery({
     queryKey: conversionEventsQueryKey,
     queryFn: repo.getEvents,
-    initialData: repo.getEventsSeed,
   });
-  return data;
+}
+
+export function useConversionEvents(): ConversionEvent[] {
+  return useConversionEventsQuery().data ?? [];
 }

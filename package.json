@@ -7,10 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test --require ./tests/register.cjs tests/campaigns-validate.test.cjs tests/server-access.test.cjs tests/campaign-metrics.test.cjs tests/tracking-measurement.test.cjs tests/budget-request.test.cjs",
-    "db:apply": "wrangler d1 execute ads-manager-db --remote --file"
+    "test": "node --test --require ./tests/register.cjs tests/campaigns-validate.test.cjs tests/server-access.test.cjs tests/campaign-metrics.test.cjs tests/tracking-measurement.test.cjs tests/budget-request.test.cjs tests/performance-query.test.cjs tests/greeting.test.cjs tests/performance-improvement.test.cjs tests/campaign-ref.test.cjs tests/on-device-ai-runtime.test.cjs tests/campaign-cache.test.cjs tests/campaign-setup.test.cjs tests/setup-conversation.test.cjs tests/page-data-states.test.cjs tests/setup-checklist.test.cjs tests/setup-templates.test.cjs",
+    "db:apply": "wrangler d1 execute ads-manager-db --remote --file",
+    "seed:large": "node --require ./tests/register.cjs scripts/generate-seed-sql.ts"
   },
   "dependencies": {
+    "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@tanstack/react-query": "^5.102.8",

@@ -32,7 +32,7 @@ export interface ChatTurn {
   pending?: boolean;
 }
 
-export type EngineKind = "on-device" | "cloud" | "preview";
+export type EngineKind = "on-device" | "preview";
 
 export interface CampaignSnapshot {
   id: string;
@@ -45,4 +45,6 @@ export interface CampaignSnapshot {
   cpa: number;
   roas: number;
   spendTrendPercent: number;
+  /** 새 캠페인 설정 화면을 거친 캠페인만 있다. dailyBudget이 실제 예산이 아니라 참고용 추정치라 채팅으로 바꾸면 안 된다. */
+  setupStatus?: "draft" | "configured";
 }

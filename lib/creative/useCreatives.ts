@@ -7,13 +7,15 @@ import type { Creative } from "@/lib/mock/types";
 
 export const creativesQueryKey = ["creatives"] as const;
 
-export function useCreatives(): Creative[] {
-  const { data } = useQuery({
+export function useCreativesQuery() {
+  return useQuery({
     queryKey: creativesQueryKey,
     queryFn: repo.getCreatives,
-    initialData: [] as Creative[],
   });
-  return data;
+}
+
+export function useCreatives(): Creative[] {
+  return useCreativesQuery().data ?? [];
 }
 
 export async function createCreative(creative: Creative) {

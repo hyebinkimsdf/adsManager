@@ -21,6 +21,13 @@ export interface CampaignRow {
   history: string;
   // 마이그레이션 전 저장된 행에는 이 컬럼이 없을 수 있어 읽는 쪽(toCampaign)은 optional로 다룬다.
   metricSource: string | null;
+  // INSERT용으로 toCampaignRow가 만드는 row에는 없다(DB DEFAULT가 채움) — SELECT로 읽은 row에만 존재.
+  createdAt?: string;
+  totalBudget?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  trackingConnectionId?: string | null;
+  setupStatus?: "draft" | "configured" | null;
 }
 
 export function toCampaign(row: CampaignRow): Campaign {
@@ -35,6 +42,13 @@ export function toCampaign(row: CampaignRow): Campaign {
     targeting: JSON.parse(row.targeting) as Targeting,
     history: JSON.parse(row.history) as DayMetric[],
     metricSource: (row.metricSource as Campaign["metricSource"]) ?? "unverified",
+    ...(row.setupStatus ? {
+      totalBudget: row.totalBudget ?? undefined,
+      startDate: row.startDate ?? undefined,
+      endDate: row.endDate ?? null,
+      trackingConnectionId: row.trackingConnectionId ?? null,
+      setupStatus: row.setupStatus,
+    } : {}),
   };
 }
 

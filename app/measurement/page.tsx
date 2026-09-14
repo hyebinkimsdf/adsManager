@@ -6,9 +6,9 @@ import Link from "next/link";
 import { HiOutlineArrowRight } from "react-icons/hi2";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { useCampaigns } from "@/lib/mock/store";
-import { sumHistory } from "@/lib/mock/campaigns";
-import { useConversionEvents } from "@/lib/tracking/useConversionEvents";
+import { useCampaignsQuery } from "@/lib/mock/store";
+import { useConversionEventsQuery } from "@/lib/tracking/useConversionEvents";
+import { DataState } from "@/components/ui/DataState";
 import { formatCompactKRW, formatDateTime, formatKRW, formatPercent } from "@/lib/format";
 
 function FunnelBar({ label, value, max, sublabel }: { label: string; value: number; max: number; sublabel?: string }) {
@@ -46,22 +46,14 @@ function FunnelBar({ label, value, max, sublabel }: { label: string; value: numb
 }
 
 export default function MeasurementPage() {
-  const campaigns = useCampaigns();
+  const campaignsQuery = useCampaignsQuery();
+  const campaigns = campaignsQuery.data ?? [];
   // 데모 시드(legacy)·관리자 테스트 전송(test)은 실제 방문자 행동이 아니므로 제외한다 —
   // 이 화면은 "전환 추적으로 수집된 실제 데이터"를 보여준다고 명시하고 있어 섞이면 숫자가 부풀려진다.
-  const allEvents = useConversionEvents();
+  const eventsQuery = useConversionEventsQuery();
+  const allEvents = eventsQuery.data ?? [];
   const events = allEvents.filter((e) => e.source === "live");
   const hasLiveData = events.length > 0;
-
-  const adTotals = campaigns.reduce(
-    (acc, c) => {
-      const t = sumHistory(c.history);
-      acc.impressions += t.impressions;
-      acc.clicks += t.clicks;
-      return acc;
-    },
-    { impressions: 0, clicks: 0 }
-  );
 
   const visits = events.filter((e) => e.eventType === "page_view").length;
   const purchases = events.filter((e) => e.eventType === "purchase");
@@ -74,8 +66,7 @@ export default function MeasurementPage() {
     .filter((e) => e.eventType === "lead_collection")
     .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
 
-  const funnelMax = adTotals.impressions;
-  const clickToVisit = adTotals.clicks > 0 ? (visits / adTotals.clicks) * 100 : 0;
+  const funnelMax = Math.max(visits, purchaseCount);
   const visitToPurchase = visits > 0 ? (purchaseCount / visits) * 100 : 0;
 
   const perCampaign = campaigns
@@ -96,12 +87,16 @@ export default function MeasurementPage() {
     })
     .sort((a, b) => b.value - a.value);
 
+  const queries = [campaignsQuery, eventsQuery];
+  if (queries.some((query) => query.isError)) return <DataState title="방문·구매 기록을 불러오지 못했어요" error onRetry={() => { queries.forEach((query) => void query.refetch()); }} />;
+  if (queries.some((query) => query.isPending)) return <DataState title="방문·구매 기록을 불러오고 있어요" />;
+
   return (
     <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div>
-        <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>Measurement</h1>
+        <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>방문·구매 기록</h1>
         <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
-          광고 이후 고객이 실제로 어떻게 행동했는지, 전환 추적으로 수집된 데이터로 확인해보세요.
+          최근 기록 최대 200건에서 실제 방문·구매만 보여줘요. 전체 기간의 합계는 아니에요.
         </p>
       </div>
 
@@ -157,12 +152,10 @@ export default function MeasurementPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>전환 퍼널</CardTitle>
+          <CardTitle>방문과 구매</CardTitle>
         </CardHeader>
         <div css={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <FunnelBar label="광고 노출" value={adTotals.impressions} max={funnelMax} />
-          <FunnelBar label="광고 클릭" value={adTotals.clicks} max={funnelMax} />
-          <FunnelBar label="사이트 방문" value={visits} max={funnelMax} sublabel={`클릭 대비 ${formatPercent(clickToVisit, 0)}`} />
+          <FunnelBar label="사이트 방문" value={visits} max={funnelMax} />
           <FunnelBar
             label="구매"
             value={purchaseCount}
@@ -171,7 +164,7 @@ export default function MeasurementPage() {
           />
         </div>
         <p css={{ marginTop: "1rem", fontSize: 12, color: "var(--color-gray-400)" }}>
-          방문·구매는 각 캠페인에 연동된 전환 추적 스니펫(AdsAI.track)이 수집한 실제 이벤트예요.{" "}
+          사이트에서 받은 기록이에요. 광고 노출·클릭은 기간이 달라 섞지 않았어요. 같은 사람이 여러 번 포함될 수 있어요.{" "}
           <Link href="/tracking" css={{ color: "var(--color-blue-600)", fontWeight: 500 }}>
             연동 코드 확인하기
           </Link>

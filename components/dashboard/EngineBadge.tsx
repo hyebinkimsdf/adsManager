@@ -5,14 +5,12 @@ import { Badge } from "@/components/ui/Badge";
 import type { EngineKind } from "@/lib/ai/types";
 
 const ENGINE_LABEL: Record<EngineKind, string> = {
-  "on-device": "온디바이스 AI 분석",
-  cloud: "AI 분석",
-  preview: "기본 추천",
+  "on-device": "나노가 만든 답변",
+  preview: "기본 처리 · 나노 미사용",
 };
 
 const ENGINE_TONE: Record<EngineKind, "blue" | "gray" | "green"> = {
   "on-device": "blue",
-  cloud: "blue",
   preview: "gray",
 };
 

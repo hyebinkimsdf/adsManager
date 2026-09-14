@@ -11,9 +11,35 @@ CREATE TABLE IF NOT EXISTS Campaign (
   -- demo(시드) / live(실제 매체 연동 확인) / unverified(사용자가 만들었지만 아직 실적 연동 전).
   -- 화면·AI가 "실데이터"로 표시해도 되는지 판단하는 근거이며, 기본값은 안전한 쪽인 unverified.
   metricSource TEXT NOT NULL DEFAULT 'unverified',
+  -- 로그인 없이도 여러 유저 데이터를 한 DB에 섞어 두기 위한 소유자 id. 지금 사이트는 고정된
+  -- 값(lib/campaigns/owner.ts의 MY_OWNER_ID) 하나만 조회한다 — 다른 값의 행은 DB엔 있어도 화면엔 안 보인다.
+  ownerId TEXT NOT NULL DEFAULT 'owner-primary',
+  totalBudget INTEGER,
+  startDate TEXT,
+  endDate TEXT,
+  trackingConnectionId TEXT,
+  setupStatus TEXT CHECK (setupStatus IN ('draft', 'configured')),
+  createRequestId TEXT,
+  setupRequestHash TEXT,
   createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updatedAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_campaign_owner ON Campaign(ownerId);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_campaign_setup_request ON Campaign(ownerId, createRequestId);
+
+-- 연결 확인을 마친 코드만 생성 카드에서 선택할 수 있다. 사이트 스캔만으로 승격하지 않는다.
+CREATE TABLE IF NOT EXISTS TrackingConnection (
+  id TEXT PRIMARY KEY,
+  ownerId TEXT NOT NULL,
+  name TEXT NOT NULL,
+  siteUrl TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'connected', 'revoked')),
+  verifiedAt TEXT,
+  revokedAt TEXT,
+  createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_tracking_connection_owner ON TrackingConnection(ownerId, status);
 
 -- 토스 픽셀 스타일 전환 추적(AdsAI.track())이 수집하는 이벤트. 캠페인당 여러 건 쌓인다.
 CREATE TABLE IF NOT EXISTS ConversionEvent (

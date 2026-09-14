@@ -9,8 +9,9 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EngineBadge } from "@/components/dashboard/EngineBadge";
-import { useCampaigns } from "@/lib/mock/store";
-import { useConversionEvents, conversionEventsQueryKey } from "@/lib/tracking/useConversionEvents";
+import { useCampaignsQuery } from "@/lib/mock/store";
+import { useConversionEventsQuery, conversionEventsQueryKey } from "@/lib/tracking/useConversionEvents";
+import { DataState } from "@/components/ui/DataState";
 import { sendTestEvent } from "@/lib/tracking/eventsRepository";
 import { getLatestScan, getEventRules, saveEventRules } from "@/lib/tracking/rulesRepository";
 import { EVENT_ORDER, EVENT_LABEL, EVENT_DESCRIPTION } from "@/lib/tracking/events";
@@ -155,11 +156,12 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
         <EngineBadge engine={engine} analyzing={analyzing} />
       </CardHeader>
       <p css={{ marginBottom: "0.75rem", fontSize: 12.5, lineHeight: 1.6, color: "var(--color-gray-500)" }}>
-        스크립트를 설치하면 사이트의 폼·버튼·링크를 한 번 크롤링해와요. GTM처럼 이벤트·변수를 직접 설정하지 않아도, AI가
-        그중 어떤 게 &quot;문의&quot;, &quot;구매&quot; 같은 전환 행동인지 판단해서 자동으로 추적을 설정해줘요.
+        사이트의 버튼을 읽고 무엇을 기록할지 추천해요. 확인하고 저장해야 적용돼요. 구매 버튼 클릭만으로 결제 완료를 확인할 수는 없어요.
       </p>
 
-      {!scan && (
+      {(scanQuery.isError || rulesQuery.isError) && <DataState title="사이트 정보나 저장된 설정을 불러오지 못했어요" error onRetry={() => { void scanQuery.refetch(); void rulesQuery.refetch(); }} />}
+      {(scanQuery.isPending || rulesQuery.isPending) && <DataState title="사이트와 저장된 설정을 확인하고 있어요" />}
+      {!scan && scanQuery.isSuccess && (
         <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>
           아직 스캔된 데이터가 없어요. 위 연동 코드를 설치한 사이트를 한 번 방문하면 자동으로 스캔돼요.
         </p>
@@ -171,7 +173,7 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
             <p css={{ fontSize: 12.5, color: "var(--color-gray-500)" }}>
               {formatDateTime(scan.scannedAt)}에 요소 {scan.elements.length}개를 찾았어요.
             </p>
-            <Button size="sm" variant="secondary" disabled={analyzing} onClick={handleGenerate}>
+            <Button size="sm" variant="secondary" disabled={analyzing || saving || scanQuery.isError || rulesQuery.isError || rulesQuery.isPending} onClick={handleGenerate}>
               <HiOutlineSparkles style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
               {analyzing ? "분석 중..." : suggestions ? "다시 분석" : "AI로 자동 설정 시작"}
             </Button>
@@ -218,7 +220,7 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
           )}
 
           {suggestions && (
-            <Button size="sm" variant="primary" disabled={saving || enabledIndexes.size === 0} onClick={handleSave}>
+            <Button size="sm" variant="primary" disabled={saving || analyzing || rulesQuery.isError || enabledIndexes.size === 0} onClick={handleSave}>
               {saving ? "저장 중..." : `선택한 ${enabledIndexes.size}개 규칙 적용`}
             </Button>
           )}
@@ -230,7 +232,7 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
       {activeRules.length > 0 && (
         <div css={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border-subtle)" }}>
           <p css={{ marginBottom: "0.5rem", fontSize: 12.5, fontWeight: 600, color: "var(--color-gray-700)" }}>
-            현재 자동 추적 중인 규칙 {activeRules.length}개
+            저장된 자동 기록 설정 {activeRules.length}개 · 사이트 적용 여부는 별도 확인이 필요해요
           </p>
           <div css={{ display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
             {activeRules.map((rule) => (
@@ -246,8 +248,10 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
 }
 
 export default function TrackingPage() {
-  const campaigns = useCampaigns();
-  const events = useConversionEvents();
+  const campaignsQuery = useCampaignsQuery();
+  const eventsQuery = useConversionEventsQuery();
+  const campaigns = campaignsQuery.data ?? [];
+  const events = eventsQuery.data ?? [];
   const origin = useOrigin();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sendingType, setSendingType] = useState<ConversionEventType | null>(null);
@@ -278,15 +282,19 @@ export default function TrackingPage() {
     }
   }
 
+  if (campaignsQuery.isError) return <DataState title="광고 목록을 불러오지 못했어요" error onRetry={() => void campaignsQuery.refetch()} />;
+  if (campaignsQuery.isPending) return <DataState title="광고 목록을 불러오고 있어요" />;
+
   return (
     <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div>
         <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>전환 및 추적 연동</h1>
         <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
-          내 사이트에 스니펫을 심어두면 방문·구매 같은 실제 행동이 Measurement에 연결돼요.
+          사이트에 코드를 넣고 방문·구매 기록이 들어오는지 확인해요.
         </p>
       </div>
 
+      <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>테스트 전송은 저장 확인용이에요. 사이트 설치 완료나 새 광고의 연결 완료를 뜻하지 않아요.</p>
       <Card>
         <CardHeader>
           <CardTitle>연동할 캠페인</CardTitle>
@@ -335,8 +343,7 @@ export default function TrackingPage() {
               </div>
               <div>
                 <p css={{ marginBottom: "0.375rem", fontSize: 12.5, color: "var(--color-gray-500)" }}>
-                  2. 이걸로 끝이에요. 방문·클릭·제출은 아래 &quot;AI 자동 설정&quot;이 알아서 추적해요. 결제 금액처럼 코드에서만
-                  알 수 있는 값을 정확히 보내고 싶을 때만 아래처럼 직접 호출하면 돼요 (선택사항).
+                  2. 사이트를 방문한 뒤 아래에서 기록할 버튼을 골라 저장해요. 구매 완료와 결제 금액은 결제가 끝난 곳에서 따로 보내주세요.
                 </p>
                 <div css={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
                   <div css={[codeBlockStyle, { flex: 1 }]}>{usageSnippet}</div>
@@ -387,8 +394,10 @@ export default function TrackingPage() {
             <CardHeader>
               <CardTitle>최근 수집된 이벤트</CardTitle>
             </CardHeader>
+            {eventsQuery.isError && <DataState title="최근 기록을 불러오지 못했어요" error onRetry={() => void eventsQuery.refetch()} />}
+            {eventsQuery.isPending && <DataState title="최근 기록을 불러오고 있어요" />}
             <div css={{ display: "flex", flexDirection: "column" }}>
-              {campaignEvents.slice(0, 15).map((e, i) => (
+              {!eventsQuery.isError && campaignEvents.slice(0, 15).map((e, i) => (
                 <div
                   key={e.id}
                   css={css`
@@ -412,7 +421,7 @@ export default function TrackingPage() {
                   </span>
                 </div>
               ))}
-              {campaignEvents.length === 0 && (
+              {eventsQuery.isSuccess && campaignEvents.length === 0 && (
                 <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-500)" }}>
                   아직 수집된 이벤트가 없어요. 위에서 테스트 전송을 눌러보세요.
                 </p>

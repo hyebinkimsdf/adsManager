@@ -32,7 +32,7 @@ function isValidRuleInput(v: RuleInput): v is Required<RuleInput> {
 // pixel.js가 방문자 브라우저에서 자동으로 걸 트리거 목록을 받아간다.
 export async function GET(req: Request) {
   if (!isD1Configured()) {
-    return NextResponse.json([], { headers: CORS_HEADERS });
+    return NextResponse.json({ error: "추적 설정 저장소가 연결되지 않았어요." }, { status: 503, headers: CORS_HEADERS });
   }
   const campaignId = new URL(req.url).searchParams.get("campaignId");
   if (!campaignId) {
@@ -54,7 +54,7 @@ export async function GET(req: Request) {
     }));
     return NextResponse.json(rules, { headers: CORS_HEADERS });
   } catch {
-    return NextResponse.json([], { headers: CORS_HEADERS });
+    return NextResponse.json({ error: "저장된 추적 설정을 불러오지 못했어요." }, { status: 503, headers: CORS_HEADERS });
   }
 }
 

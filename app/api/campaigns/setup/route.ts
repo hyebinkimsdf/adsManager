@@ -1,0 +1,46 @@
+import { NextResponse } from "next/server";
+import { isD1Configured } from "@/lib/d1";
+import { MY_OWNER_ID } from "@/lib/campaigns/owner";
+import { INDUSTRIES, OBJECTIVES } from "@/lib/campaigns/validate";
+import { koreaDate } from "@/lib/campaigns/setup";
+import { CampaignSetupError, createCampaignSetup, getCampaignSetupOptions, isCampaignSetupSchemaError } from "@/lib/campaigns/setupServer";
+import { requireAdminRequest, requireSameOriginMutation } from "@/lib/server/access";
+import type { CampaignIndustry, DisplayObjective } from "@/lib/mock/types";
+
+function failure(error: unknown) {
+  if (error instanceof CampaignSetupError) return NextResponse.json({ error: error.message, outcome: error.outcome }, { status: error.status });
+  if (isCampaignSetupSchemaError(error)) return NextResponse.json({ error: "새 캠페인 저장 기능을 준비 중이에요. 관리자의 데이터베이스 업데이트가 필요해요.", outcome: "not_saved" }, { status: 503 });
+  // No SQL, credentials or other-owner data in public errors.
+  return NextResponse.json({ error: "저장 준비가 아직 안 됐어요. 잠시 후 다시 시도해 주세요." }, { status: 503 });
+}
+
+export async function GET(req: Request) {
+  const denied = requireAdminRequest(req);
+  if (denied) return denied;
+  if (!isD1Configured()) return failure(null);
+  const params = new URL(req.url).searchParams;
+  const objective = params.get("objective") ?? "purchase";
+  const industry = params.get("industry") ?? "etc";
+  if (!OBJECTIVES.includes(objective as DisplayObjective) || !INDUSTRIES.includes(industry as CampaignIndustry)) {
+    return NextResponse.json({ error: "광고 목표와 업종을 확인해 주세요." }, { status: 400 });
+  }
+  try {
+    const data = await getCampaignSetupOptions(MY_OWNER_ID, {
+      objective: objective as DisplayObjective, industry: industry as CampaignIndustry,
+      startDate: params.get("startDate") ?? koreaDate(), endDate: params.get("endDate") || null,
+    });
+    return NextResponse.json(data, { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) { return failure(error); }
+}
+
+export async function POST(req: Request) {
+  const denied = requireAdminRequest(req) ?? requireSameOriginMutation(req);
+  if (denied) return denied;
+  if (!isD1Configured()) return failure(null);
+  let body: unknown;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "입력 내용을 확인해 주세요." }, { status: 400 }); }
+  try {
+    const { campaign, created } = await createCampaignSetup(body, MY_OWNER_ID);
+    return NextResponse.json(campaign, { status: created ? 201 : 200 });
+  } catch (error) { return failure(error); }
+}

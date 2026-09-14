@@ -1,29 +1,62 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import * as repo from "./campaignsRepository";
 import type { Campaign } from "./types";
+import { buildDashboardSummary, type DashboardSummary } from "@/lib/insights";
 
 export const campaignsQueryKey = ["campaigns"] as const;
+export const campaignSummaryQueryKey = ["campaigns", "summary"] as const;
+const campaignDetailQueryKey = (id: string) => ["campaigns", "detail", id] as const;
+const emptySummary = buildDashboardSummary([]);
+
+// 서버 응답 전에는 예시 수치를 표시하지 않는다. 조회 상태와 실제 빈 결과를 구분한다.
+export const campaignsQueryOptions = queryOptions({
+  queryKey: campaignsQueryKey,
+  queryFn: repo.getCampaigns,
+});
+
+export const campaignSummaryQueryOptions = queryOptions({
+  queryKey: campaignSummaryQueryKey,
+  queryFn: repo.getDashboardSummary,
+});
+
+export function campaignDetailQueryOptions(id: string) {
+  return queryOptions({
+    queryKey: campaignDetailQueryKey(id),
+    queryFn: () => repo.getCampaign(id),
+    // 목록에서 가져온 값의 조회 시점을 상세의 새 조회 시점으로 오인하지 않는다.
+    placeholderData: () => getCachedCampaign(id),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCampaignsQuery() {
+  return useQuery(campaignsQueryOptions);
+}
+
+export function useCampaignsSummaryQuery() {
+  return useQuery(campaignSummaryQueryOptions);
+}
+
+export function useCampaignQuery(id: string) {
+  return useQuery(campaignDetailQueryOptions(id));
+}
 
 export function useCampaigns(): Campaign[] {
-  const { data } = useQuery({
-    queryKey: campaignsQueryKey,
-    queryFn: repo.getCampaigns,
-    initialData: repo.getCampaignsSeed,
-  });
-  return data;
+  return useCampaignsQuery().data ?? [];
+}
+
+// 홈 대시보드 전용 — 캠페인 전체 배열이 아니라 서버가 미리 계산한 요약값만 받는다. 캠페인이
+// 수천 건으로 늘어나도 응답 크기가 거의 일정해 초기 로딩이 캠페인 수에 영향받지 않는다.
+export function useCampaignsSummary(): DashboardSummary {
+  return useCampaignsSummaryQuery().data ?? emptySummary;
 }
 
 export function useCampaign(id: string): Campaign | undefined {
-  const { data } = useQuery({
-    queryKey: campaignsQueryKey,
-    queryFn: repo.getCampaigns,
-    initialData: repo.getCampaignsSeed,
-    select: (campaigns) => campaigns.find((c) => c.id === id),
-  });
-  return data;
+  const { data } = useCampaignQuery(id);
+  return id ? data : undefined;
 }
 
 // 캠페인 목록 캐시를 직접 조작하는 쓰기 액션들. 컴포넌트 밖(applyAction 등 순수 함수)에서도
@@ -31,14 +64,53 @@ export function useCampaign(id: string): Campaign | undefined {
 //
 // PATCH/POST 응답에는 이미 서버가 반영한 최신 캠페인이 담겨 있으므로, 캐시 배열 안의 해당 항목만
 // 그 값으로 교체(또는 추가/제거)한다 — 매 변경마다 전체 목록을 다시 조회하지 않는다.
+//
+// 전체 배열 캐시(campaignsQueryKey)가 비어 있을 수도 있는 화면(예: 요약 응답만 쓰는 홈 화면)을
+// 위해, 요약 캐시의 topCampaigns/recentCampaigns → 단건 상세 캐시 순으로 폴백해서 찾는다.
 function getCachedCampaign(id: string): Campaign | undefined {
-  return queryClient.getQueryData<Campaign[]>(campaignsQueryKey)?.find((c) => c.id === id);
+  const full = queryClient.getQueryData<Campaign[]>(campaignsQueryKey)?.find((c) => c.id === id);
+  if (full) return full;
+  const summary = queryClient.getQueryData<DashboardSummary>(campaignSummaryQueryKey);
+  const fromSummary =
+    summary?.topCampaigns.find((c) => c.id === id) ?? summary?.recentCampaigns.find((c) => c.id === id);
+  if (fromSummary) return fromSummary;
+  return queryClient.getQueryData<Campaign>(campaignDetailQueryKey(id));
 }
 
-function replaceCampaign(campaign: Campaign) {
-  queryClient.setQueryData<Campaign[]>(campaignsQueryKey, (prev) =>
-    prev?.map((c) => (c.id === campaign.id ? campaign : c))
-  );
+// 순위/집계는 서버에서 다시 계산한다. 활성 요약은 즉시, 비활성 요약은 다음 접근에 조회한다.
+function invalidateDerivedCaches() {
+  void queryClient.invalidateQueries({ queryKey: campaignSummaryQueryKey, exact: true });
+}
+
+async function cancelAffectedReads(id: string) {
+  const wasRefreshingList = queryClient.getQueryState(campaignsQueryKey)?.fetchStatus === "fetching";
+  // 변경 이전 GET이 늦게 도착해 최신 캐시를 덮지 못하게 한다.
+  await Promise.all([
+    queryClient.cancelQueries({ queryKey: campaignsQueryKey, exact: true }),
+    queryClient.cancelQueries({ queryKey: campaignSummaryQueryKey, exact: true }),
+    queryClient.cancelQueries({ queryKey: campaignDetailQueryKey(id), exact: true }),
+  ]);
+  return wasRefreshingList;
+}
+
+function updateCachedList(update: (campaigns: Campaign[]) => Campaign[], resumeRefresh: boolean) {
+  const state = queryClient.getQueryState(campaignsQueryKey);
+  queryClient.setQueryData<Campaign[]>(campaignsQueryKey, (prev) => prev === undefined ? undefined : update(prev), {
+    // 한 항목의 변경으로 나머지 항목의 신선도까지 연장하지 않는다.
+    updatedAt: state?.dataUpdatedAt,
+  });
+  if (state?.data === undefined || state.isInvalidated || resumeRefresh) {
+    // 전체 목록을 아직 안 받았다면 단건 응답을 완전한 목록처럼 캐싱하지 않는다.
+    // 변경 전 시작된 재조회도 최신 응답으로 다시 이어간다.
+    void queryClient.invalidateQueries({ queryKey: campaignsQueryKey, exact: true });
+  }
+}
+
+async function replaceCampaign(campaign: Campaign) {
+  const resumeRefresh = await cancelAffectedReads(campaign.id);
+  updateCachedList((prev) => prev.map((c) => (c.id === campaign.id ? campaign : c)), resumeRefresh);
+  queryClient.setQueryData(campaignDetailQueryKey(campaign.id), campaign);
+  invalidateDerivedCaches();
   return campaign;
 }
 
@@ -69,13 +141,19 @@ export function updateTargeting(id: string, targeting: Partial<Campaign["targeti
 
 export async function addCampaign(campaign: Campaign) {
   const created = await repo.addCampaign(campaign);
-  queryClient.setQueryData<Campaign[]>(campaignsQueryKey, (prev) => (prev ? [created, ...prev] : [created]));
+  const resumeRefresh = await cancelAffectedReads(created.id);
+  updateCachedList((prev) => [created, ...prev.filter((c) => c.id !== created.id)], resumeRefresh);
+  queryClient.setQueryData(campaignDetailQueryKey(created.id), created);
+  invalidateDerivedCaches();
   return created;
 }
 
 export async function deleteCampaign(id: string) {
   await repo.deleteCampaign(id);
-  queryClient.setQueryData<Campaign[]>(campaignsQueryKey, (prev) => prev?.filter((c) => c.id !== id));
+  const resumeRefresh = await cancelAffectedReads(id);
+  updateCachedList((prev) => prev.filter((c) => c.id !== id), resumeRefresh);
+  queryClient.removeQueries({ queryKey: campaignDetailQueryKey(id) });
+  invalidateDerivedCaches();
 }
 
 export function updateIndustry(id: string, industry: Campaign["industry"]) {
@@ -84,6 +162,9 @@ export function updateIndustry(id: string, industry: Campaign["industry"]) {
 
 export async function resetToSeed() {
   const campaigns = await repo.resetToSeed();
+  await queryClient.cancelQueries({ queryKey: campaignsQueryKey });
+  queryClient.removeQueries({ queryKey: ["campaigns", "detail"] });
   queryClient.setQueryData(campaignsQueryKey, campaigns);
+  invalidateDerivedCaches();
   return campaigns;
 }

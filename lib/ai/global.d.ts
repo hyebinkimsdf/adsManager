@@ -1,8 +1,9 @@
 export interface LanguageModelSession {
-  prompt(input: string, options?: { responseConstraint?: unknown }): Promise<string>;
+  clone?(options?: { signal?: AbortSignal }): Promise<LanguageModelSession>;
+  prompt(input: string, options?: { responseConstraint?: unknown; signal?: AbortSignal }): Promise<string>;
   promptStreaming(
     input: string,
-    options?: { responseConstraint?: unknown }
+    options?: { responseConstraint?: unknown; signal?: AbortSignal }
   ): AsyncIterable<string>;
   destroy(): void;
 }
@@ -13,6 +14,7 @@ export interface LanguageModelExpectation {
 }
 
 export interface LanguageModelCreateOptions {
+  signal?: AbortSignal;
   initialPrompts?: { role: "system" | "user" | "assistant"; content: string }[];
   expectedInputs?: LanguageModelExpectation[];
   expectedOutputs?: LanguageModelExpectation[];
@@ -39,6 +41,7 @@ export interface TranslatorSession {
 }
 
 export interface TranslatorCreateOptions {
+  signal?: AbortSignal;
   sourceLanguage: string;
   targetLanguage: string;
   monitor?: (monitor: EventTarget) => void;

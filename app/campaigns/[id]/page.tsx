@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/Button";
 import { SummaryCard } from "@/components/dashboard/SummaryCard";
 import { LineChart } from "@/components/dashboard/LineChart";
 import { openAssistantDock } from "@/lib/ui/assistantDock";
+import { campaignStateLabel } from "@/lib/campaigns/list";
 import type { CampaignIndustry } from "@/lib/mock/types";
 
 const INDUSTRY_KEYS = Object.keys(INDUSTRY_LABEL) as CampaignIndustry[];
@@ -102,15 +103,15 @@ export default function CampaignDetailPage() {
         </Link>
         <div css={{ marginTop: "0.5rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem" }}>
           <h1 css={{ fontSize: 20, fontWeight: 700, color: "var(--color-gray-900)" }}>{campaign.name}</h1>
-          <Badge tone={campaign.status === "active" ? "green" : "gray"}>
-            {campaign.status === "active" ? "진행 중" : "일시정지"}
+          <Badge tone={campaign.status === "active" && !campaign.setupStatus ? "green" : "gray"}>
+            {campaignStateLabel(campaign)}
           </Badge>
         </div>
         <div css={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Badge tone="gray">{INDUSTRY_LABEL[campaign.industry]}</Badge>
           <Badge tone="blue">{OBJECTIVE_LABEL[campaign.objective]}</Badge>
           {campaign.metricSource !== "live" && (
-            <Badge tone="gray">{campaign.metricSource === "demo" ? "데모 데이터" : "실적 연동 전"}</Badge>
+            <Badge tone="gray">{campaign.metricSource === "demo" ? "예시 실적" : "실적 연결 전"}</Badge>
           )}
         </div>
       </div>
@@ -156,119 +157,144 @@ export default function CampaignDetailPage() {
         <div css={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div css={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span css={{ fontSize: 13, color: "var(--color-gray-600)" }}>캠페인 활성화</span>
-            <Toggle
-              checked={campaign.status === "active"}
-              onChange={(checked) => setStatus(campaign.id, checked ? "active" : "paused")}
-              label="캠페인 활성 상태"
-            />
+            {campaign.setupStatus ? (
+              <span css={{ fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                {campaign.setupStatus === "draft" ? "초안이라 아직 시작할 수 없어요" : "광고 시작 기능은 아직 준비 중이에요"}
+              </span>
+            ) : (
+              <Toggle
+                checked={campaign.status === "active"}
+                onChange={(checked) => setStatus(campaign.id, checked ? "active" : "paused")}
+                label="캠페인 활성 상태"
+              />
+            )}
           </div>
-          <div>
-            <span css={{ marginBottom: "0.375rem", display: "block", fontSize: 13, color: "var(--color-gray-600)" }}>
-              일 예산
-            </span>
-            <div css={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <div
-                css={css`
-                  display: flex;
-                  flex: 1;
-                  align-items: center;
-                  border-radius: var(--radius-sm);
-                  border: 1px solid ${budgetInput !== null && budgetError ? "var(--color-red-500)" : "var(--border-subtle)"};
-                  background: var(--color-gray-50);
-                  padding: 0.625rem 0.875rem;
-                `}
-              >
-                <input
-                  value={editingValue}
-                  onChange={(e) => handleBudgetInputChange(e.target.value)}
-                  inputMode="numeric"
-                  aria-invalid={budgetInput !== null && !!budgetError}
-                  css={css`
-                    width: 100%;
-                    background: transparent;
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: var(--color-gray-900);
-                    outline: none;
-                  `}
-                />
-                <span css={{ fontSize: 13, color: "var(--color-gray-500)" }}>원</span>
-              </div>
-              <Button size="md" variant="secondary" onClick={saveBudget} disabled={saveState === "saving" || !!budgetError}>
-                {saveState === "saving" ? "저장 중…" : "저장"}
-              </Button>
-            </div>
-
-            {budgetInput !== null && budgetError && (
-              <p css={{ marginTop: "0.375rem", fontSize: 12.5, color: "var(--color-red-500)" }}>{budgetError}</p>
-            )}
-            {saveState === "saved" && (
-              <p
-                css={{
-                  marginTop: "0.375rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.25rem",
-                  fontSize: 12.5,
-                  fontWeight: 500,
-                  color: "var(--color-green-600)",
-                }}
-              >
-                <HiCheck style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" /> 저장했어요
+          {campaign.setupStatus ? (
+            <div>
+              <span css={{ marginBottom: "0.375rem", display: "block", fontSize: 13, color: "var(--color-gray-600)" }}>
+                예산 · 기간
+              </span>
+              <p css={{ fontSize: 14, fontWeight: 600, color: "var(--color-gray-900)" }}>
+                {campaign.totalBudget != null ? `총 ${formatKRW(campaign.totalBudget)}원` : `하루 ${formatKRW(campaign.dailyBudget)}원`}
               </p>
-            )}
-            {saveState === "error" && (
-              <div css={{ marginTop: "0.375rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              {campaign.startDate && (
+                <p css={{ marginTop: "0.125rem", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                  {campaign.startDate} ~ {campaign.endDate ?? "종료일 없음"}
+                </p>
+              )}
+              <p css={{ marginTop: "0.375rem", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                예산·기간 변경은 아직 여기서 지원하지 않아요.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <span css={{ marginBottom: "0.375rem", display: "block", fontSize: 13, color: "var(--color-gray-600)" }}>
+                일 예산
+              </span>
+              <div css={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div
+                  css={css`
+                    display: flex;
+                    flex: 1;
+                    align-items: center;
+                    border-radius: var(--radius-sm);
+                    border: 1px solid ${budgetInput !== null && budgetError ? "var(--color-red-500)" : "var(--border-subtle)"};
+                    background: var(--color-gray-50);
+                    padding: 0.625rem 0.875rem;
+                  `}
+                >
+                  <input
+                    value={editingValue}
+                    onChange={(e) => handleBudgetInputChange(e.target.value)}
+                    inputMode="numeric"
+                    aria-invalid={budgetInput !== null && !!budgetError}
+                    css={css`
+                      width: 100%;
+                      background: transparent;
+                      font-size: 14px;
+                      font-weight: 600;
+                      color: var(--color-gray-900);
+                      outline: none;
+                    `}
+                  />
+                  <span css={{ fontSize: 13, color: "var(--color-gray-500)" }}>원</span>
+                </div>
+                <Button size="md" variant="secondary" onClick={saveBudget} disabled={saveState === "saving" || !!budgetError}>
+                  {saveState === "saving" ? "저장 중…" : "저장"}
+                </Button>
+              </div>
+
+              {budgetInput !== null && budgetError && (
+                <p css={{ marginTop: "0.375rem", fontSize: 12.5, color: "var(--color-red-500)" }}>{budgetError}</p>
+              )}
+              {saveState === "saved" && (
                 <p
                   css={{
+                    marginTop: "0.375rem",
                     display: "flex",
                     alignItems: "center",
                     gap: "0.25rem",
                     fontSize: 12.5,
                     fontWeight: 500,
-                    color: "var(--color-red-600)",
+                    color: "var(--color-green-600)",
                   }}
                 >
-                  <HiExclamationTriangle style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
-                  {saveError}
+                  <HiCheck style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" /> 저장했어요
                 </p>
-                <button
-                  type="button"
-                  onClick={saveBudget}
-                  css={css`
-                    font-size: 12.5px;
-                    font-weight: 600;
-                    color: var(--color-blue-600);
-                    &:hover {
-                      color: var(--color-blue-700);
-                    }
-                  `}
-                >
-                  다시 시도
-                </button>
-              </div>
-            )}
+              )}
+              {saveState === "error" && (
+                <div css={{ marginTop: "0.375rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <p
+                    css={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.25rem",
+                      fontSize: 12.5,
+                      fontWeight: 500,
+                      color: "var(--color-red-600)",
+                    }}
+                  >
+                    <HiExclamationTriangle style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
+                    {saveError}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={saveBudget}
+                    css={css`
+                      font-size: 12.5px;
+                      font-weight: 600;
+                      color: var(--color-blue-600);
+                      &:hover {
+                        color: var(--color-blue-700);
+                      }
+                    `}
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              )}
 
-            <button
-              type="button"
-              onClick={() => openAssistantDock(campaign.id)}
-              css={css`
-                margin-top: 0.625rem;
-                display: inline-flex;
-                align-items: center;
-                gap: 0.25rem;
-                font-size: 12.5px;
-                font-weight: 600;
-                color: var(--color-blue-600);
-                &:hover {
-                  color: var(--color-blue-700);
-                }
-              `}
-            >
-              <HiSparkles style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
-              AI에게 예산 변경 요청하기
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => openAssistantDock(campaign.id)}
+                css={css`
+                  margin-top: 0.625rem;
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 0.25rem;
+                  font-size: 12.5px;
+                  font-weight: 600;
+                  color: var(--color-blue-600);
+                  &:hover {
+                    color: var(--color-blue-700);
+                  }
+                `}
+              >
+                <HiSparkles style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
+                AI에게 예산 변경 요청하기
+              </button>
+            </div>
+          )}
         </div>
       </Card>
 

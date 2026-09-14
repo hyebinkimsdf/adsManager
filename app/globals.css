@@ -81,6 +81,13 @@ textarea {
   color: inherit;
 }
 
+/* Tailwind preflight가 없어 링크(a) 기본 밑줄·색상이 그대로 노출되던 문제. 각 컴포넌트는
+   필요하면 자기 스타일로 밑줄을 override. */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-gray-300) transparent;

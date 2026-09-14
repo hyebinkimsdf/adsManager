@@ -2,6 +2,8 @@
 "use client";
 
 import { css } from "@emotion/react";
+import { useState } from "react";
+import { DataState } from "@/components/ui/DataState";
 import Link from "next/link";
 import { HiOutlinePlus, HiOutlineTrash } from "react-icons/hi2";
 import { Card } from "@/components/ui/Card";
@@ -9,7 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import {
-  useRewardCampaigns,
+  useRewardCampaignsQuery,
   setRewardCampaignStatus,
   deleteRewardCampaign,
 } from "@/lib/reward/useRewardCampaigns";
@@ -37,7 +39,20 @@ function summarize(c: RewardCampaign): string {
 }
 
 export default function RewardCampaignsPage() {
-  const campaigns = useRewardCampaigns();
+  const campaignsQuery = useRewardCampaignsQuery();
+  const campaigns = campaignsQuery.data ?? [];
+  const [pending, setPending] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  async function changeCampaign(id: string, action: () => Promise<unknown>) {
+    if (pending) return;
+    setPending(id);
+    setError(null);
+    try { await action(); }
+    catch { setError("변경 내용을 저장하지 못했어요. 다시 눌러주세요."); }
+    finally { setPending(null); }
+  }
+  if (campaignsQuery.isError) return <DataState title="리워드 광고를 불러오지 못했어요" error onRetry={() => void campaignsQuery.refetch()} />;
+  if (campaignsQuery.isPending) return <DataState title="리워드 광고를 불러오고 있어요" />;
 
   return (
     <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -45,7 +60,7 @@ export default function RewardCampaignsPage() {
         <div>
           <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>리워드 광고</h1>
           <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
-            토스 앱의 리워드 지면을 기반으로 하는 상품이에요. 참여 방식과 리워드 제공 여부는 상품마다 달라요.
+            리워드 광고의 설정을 저장해요. 실제 광고 집행과 보상 지급은 연결되지 않았어요.
           </p>
         </div>
         <Link href="/campaigns/reward/new">
@@ -55,6 +70,7 @@ export default function RewardCampaignsPage() {
         </Link>
       </div>
 
+      {error && <p role="alert" css={{ color: "var(--color-red-500)" }}>{error}</p>}
       <Card>
         <div css={{ display: "flex", flexDirection: "column" }}>
           {campaigns.map((c, i) => (
@@ -78,14 +94,16 @@ export default function RewardCampaignsPage() {
               </div>
               <Toggle
                 checked={c.status === "active"}
-                onChange={(checked) => setRewardCampaignStatus(c.id, checked ? "active" : "paused")}
-                label={`${c.name} 활성 상태`}
+                onChange={(checked) => void changeCampaign(c.id, () => setRewardCampaignStatus(c.id, checked ? "active" : "paused"))}
+                disabled={pending !== null}
+                label={`${c.name} 저장된 활성 설정 (실제 집행 아님)`}
               />
               <button
                 type="button"
                 aria-label={`${c.name} 삭제`}
+                disabled={pending !== null}
                 onClick={() => {
-                  if (window.confirm(`"${c.name}" 캠페인을 삭제할까요? 되돌릴 수 없어요.`)) deleteRewardCampaign(c.id);
+                  if (window.confirm(`"${c.name}" 캠페인을 삭제할까요? 되돌릴 수 없어요.`)) void changeCampaign(c.id, () => deleteRewardCampaign(c.id));
                 }}
                 css={css`
                   display: flex;

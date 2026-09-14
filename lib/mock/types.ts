@@ -1,6 +1,6 @@
 export type AdType = "display" | "reward";
-/** 토스애즈 디스플레이 광고의 4가지 캠페인 목표(구매/앱설치/잠재고객/방문)와 동일한 구조 */
-export type DisplayObjective = "purchase" | "app_install" | "leads" | "visit";
+/** 토스애즈 디스플레이 광고의 5가지 캠페인 목표(구매/앱설치/잠재고객/방문/도달)와 동일한 구조 */
+export type DisplayObjective = "purchase" | "app_install" | "leads" | "visit" | "reach";
 export type CampaignStatus = "active" | "paused";
 export type CampaignIndustry =
   | "food"
@@ -42,6 +42,12 @@ export interface Campaign {
   targeting: Targeting;
   history: DayMetric[];
   metricSource?: "demo" | "live" | "unverified";
+  /** 설정 저장만 지원한다. 광고 매체의 실제 집행/지출 한도 적용 여부와는 별개다. */
+  totalBudget?: number;
+  startDate?: string;
+  endDate?: string | null;
+  trackingConnectionId?: string | null;
+  setupStatus?: "draft" | "configured";
 }
 
 /** 토스 픽셀/전환추적코드가 실제로 수집하는 이벤트 목록 중, 이 프로젝트에서 다루는 핵심 8종 */

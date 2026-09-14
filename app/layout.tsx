@@ -3,6 +3,8 @@ import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { EmotionRegistry } from "@/components/providers/EmotionRegistry";
+import { OnDeviceAiProvider } from "@/components/providers/OnDeviceAiProvider";
 
 export const metadata: Metadata = {
   title: "AI 광고 관리 대시보드",
@@ -13,11 +15,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko" style={{ height: "100%", WebkitFontSmoothing: "antialiased" }}>
       <body style={{ minHeight: "100%" }}>
-        <QueryProvider>
-          <ThemeProvider>
-            <AppShell>{children}</AppShell>
-          </ThemeProvider>
-        </QueryProvider>
+        <EmotionRegistry>
+          <QueryProvider>
+            <ThemeProvider>
+              <OnDeviceAiProvider>
+                <AppShell>{children}</AppShell>
+              </OnDeviceAiProvider>
+            </ThemeProvider>
+          </QueryProvider>
+        </EmotionRegistry>
       </body>
     </html>
   );

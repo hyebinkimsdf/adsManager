@@ -14,11 +14,8 @@ import {
   HiOutlineLink,
   HiOutlineGift,
   HiOutlinePhoto,
-  HiSparkles,
 } from "react-icons/hi2";
 import { AssistantDock } from "@/components/assistant/AssistantDock";
-import { ModeToggle } from "@/components/layout/ModeToggle";
-import { AccountModeMenu } from "@/components/layout/AccountModeMenu";
 import { useUiMode } from "@/lib/ui/mode";
 
 interface NavItem {
@@ -125,23 +122,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           }
         `}
       >
-        <div css={{ marginBottom: "2rem", display: "flex", alignItems: "center", gap: "0.5rem", padding: "0 0.5rem" }}>
-          <span
-            css={css`
-              display: flex;
-              height: 2rem;
-              width: 2rem;
-              align-items: center;
-              justify-content: center;
-              border-radius: 10px;
-              background-color: var(--color-blue-500);
-              color: white;
-            `}
-          >
-            <HiSparkles style={{ height: "1rem", width: "1rem" }} aria-hidden="true" />
-          </span>
+        <Link
+          href="/"
+          css={{ marginBottom: "2rem", display: "flex", alignItems: "center", padding: "0 0.5rem" }}
+        >
           <span css={{ fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>AI 광고 관리자</span>
-        </div>
+        </Link>
         <nav css={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           {navGroups.map((group, i) => (
             <div key={group.label ?? `group-${i}`} css={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
@@ -205,7 +191,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               김혜빈
             </span>
-            <AccountModeMenu />
           </div>
         </div>
       </aside>
@@ -227,23 +212,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           }
         `}
       >
-        <div css={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <span
-            css={css`
-              display: flex;
-              height: 1.75rem;
-              width: 1.75rem;
-              align-items: center;
-              justify-content: center;
-              border-radius: 8px;
-              background-color: var(--color-blue-500);
-              color: white;
-            `}
-          >
-            <HiSparkles style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
-          </span>
+        <Link href="/" css={{ display: "flex", alignItems: "center" }}>
           <span css={{ fontSize: 15, fontWeight: 700, color: "var(--color-gray-900)" }}>AI 광고 관리자</span>
-        </div>
+        </Link>
         <nav css={{ display: "flex", gap: "0.25rem" }}>
           {navItems.map((item) => {
             const active = isActive(pathname, item.href);
@@ -255,20 +226,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
       </header>
-      <div
-        css={css`
-          display: flex;
-          justify-content: center;
-          border-bottom: 1px solid var(--border-subtle);
-          background: white;
-          padding: 0.5rem 1rem;
-          @media (min-width: 768px) {
-            display: none;
-          }
-        `}
-      >
-        <ModeToggle />
-      </div>
 
       <main css={{ flex: 1, backgroundColor: "var(--surface-muted)" }}>
         <div

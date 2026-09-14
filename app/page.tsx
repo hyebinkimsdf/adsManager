@@ -3,130 +3,37 @@
 
 import { css } from "@emotion/react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { useCampaigns } from "@/lib/mock/store";
+import { useCampaignsSummaryQuery } from "@/lib/mock/store";
+import { DataState } from "@/components/ui/DataState";
 import { useUiMode } from "@/lib/ui/mode";
-import {
-  buildInsights,
-  buildWeeklyRecommendations,
-  buildCampaignSpotlights,
-  buildWeeklyCampaignInputs,
-  hydrateWeeklyRecommendation,
-  hydrateWeeklySpotlight,
-  composeWeeklySummary,
-  dailySeries,
-  type WeeklyRecommendation,
-  type CampaignSpotlight,
-} from "@/lib/insights";
-import { useWeeklyAnalysis } from "@/lib/ai/useWeeklyAnalysis";
-import type { EngineKind } from "@/lib/ai/types";
+import { composeWeeklySummary } from "@/lib/insights";
 import { SummaryCard } from "@/components/dashboard/SummaryCard";
 import { SimpleWeekHeader } from "@/components/dashboard/SimpleWeekHeader";
 import { WeeklySummaryHighlight } from "@/components/dashboard/WeeklySummaryHighlight";
-import { CampaignSpotlightCards } from "@/components/dashboard/CampaignSpotlightCards";
 import { WeeklyRecommendationsCard } from "@/components/dashboard/WeeklyRecommendationsCard";
-import { CampaignRankingCard } from "@/components/dashboard/CampaignRankingCard";
 import { CampaignListItem } from "@/components/dashboard/CampaignListItem";
 import { Card } from "@/components/ui/Card";
 import { formatCompactKRW, formatNumber, formatPercent } from "@/lib/format";
-import type { Campaign, DayMetric } from "@/lib/mock/types";
-
-interface WeeklyAiState {
-  recommendations: WeeklyRecommendation[];
-  spotlights: CampaignSpotlight[];
-  engine: EngineKind;
-}
-
-function combine(campaigns: Campaign[], days: number, key: keyof DayMetric): number {
-  return campaigns.reduce((sum, c) => {
-    const slice = c.history.slice(-days);
-    return sum + slice.reduce((s, d) => s + (d[key] as number), 0);
-  }, 0);
-}
-
-function trend(campaigns: Campaign[], key: keyof DayMetric): number {
-  const recent = combine(campaigns, 7, key);
-  const previous = combine(campaigns, 14, key) - recent;
-  if (previous === 0) return 0;
-  return ((recent - previous) / previous) * 100;
-}
 
 export default function HomePage() {
-  const campaigns = useCampaigns();
+  const query = useCampaignsSummaryQuery();
+  const summary = query.data;
   const mode = useUiMode();
-  const insights = buildInsights(campaigns);
 
-  const todaySpend = campaigns.reduce((sum, c) => sum + (c.history.at(-1)?.spend ?? 0), 0);
-  const todayConversions = campaigns.reduce((sum, c) => sum + (c.history.at(-1)?.conversions ?? 0), 0);
-  const todayClicks = campaigns.reduce((sum, c) => sum + (c.history.at(-1)?.clicks ?? 0), 0);
+  if (query.isPending) return <DataState title="광고 현황을 불러오고 있어요" />;
+  if (!summary) return <DataState title="광고 현황을 불러오지 못했어요" error onRetry={() => void query.refetch()} />;
+  const dataNotice = query.isError ? (
+    <DataState title="갱신하지 못했어요. 이전 내용을 보여드려요." error onRetry={() => void query.refetch()} />
+  ) : null;
 
-  const last7Spend = combine(campaigns, 7, "spend");
-  const last7Revenue = combine(campaigns, 7, "revenue");
-  const roas7 = last7Spend > 0 ? (last7Revenue / last7Spend) * 100 : 0;
-
-  // 이번 주 추천 액션/캠페인 스포트라이트를 실제 AI(온디바이스 → Gemini 클라우드)로 분석한다.
-  // 응답을 기다리는 동안과 AI를 못 쓰는 환경에서는 규칙 기반 폴백을 즉시 보여주고, AI 결과가
-  // 도착하면 조용히 교체한다 — 최대 18초씩 대시보드를 막아두지 않기 위함.
-  const weeklyAnalysis = useWeeklyAnalysis();
-  const [aiWeekly, setAiWeekly] = useState<WeeklyAiState | null>(null);
-  const [weeklyAnalyzing, setWeeklyAnalyzing] = useState(false);
-  const analyzedRef = useRef(false);
-
-  // weeklyAnalysis.state는 온디바이스 모델 준비 중에도 계속 바뀐다(checking → downloadable →
-  // downloading → available). 원본 state를 의존성으로 쓰면 분석이 진행되는 도중에도 effect가
-  // 재실행되어 진행 중이던 analyze() 호출이 취소된 것으로 처리되고, weeklyAnalyzing이 계속
-  // true로 남는 버그가 있었다. "checking 단계를 벗어났는지"만 boolean으로 추적해 한 번만 바뀌게 한다.
-  const readyToAnalyze = weeklyAnalysis.state !== "checking";
-
-  useEffect(() => {
-    if (mode !== "simple") return;
-    if (!readyToAnalyze) return;
-    if (analyzedRef.current) return;
-    const inputs = buildWeeklyCampaignInputs(campaigns);
-    if (inputs.length === 0) return;
-
-    analyzedRef.current = true;
-    let cancelled = false;
-
-    async function run() {
-      setWeeklyAnalyzing(true);
-      try {
-        const result = await weeklyAnalysis.analyze(inputs);
-        if (cancelled || !result) return;
-        const recommendations = result.reply.recommendations
-          .map((r) => hydrateWeeklyRecommendation(campaigns, r))
-          .filter((r): r is WeeklyRecommendation => r !== null)
-          .slice(0, 3);
-        const spotlights = result.reply.spotlights
-          .map((s) => hydrateWeeklySpotlight(campaigns, s))
-          .filter((s): s is CampaignSpotlight => s !== null)
-          .slice(0, 3);
-        if (recommendations.length > 0 || spotlights.length > 0) {
-          setAiWeekly({ recommendations, spotlights, engine: result.engine });
-        }
-      } finally {
-        if (!cancelled) setWeeklyAnalyzing(false);
-      }
-    }
-    run();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, readyToAnalyze]);
+  if (summary.totalCampaignCount === 0) return <div css={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <DataState title="아직 저장된 광고가 없어요" />
+    <Link href="/campaigns/new" css={{ color: "var(--color-blue-600)", fontWeight: 650 }}>첫 광고 만들기 →</Link>
+  </div>;
 
   if (mode === "simple") {
-    const last7Conversions = combine(campaigns, 7, "conversions");
-    const prevConversions = combine(campaigns, 14, "conversions") - last7Conversions;
-    const spendTrendPct = trend(campaigns, "spend");
-    const conversionsTrendPct = trend(campaigns, "conversions");
-
-    const summary = composeWeeklySummary(spendTrendPct, conversionsTrendPct);
-    const recommendations = aiWeekly?.recommendations ?? buildWeeklyRecommendations(campaigns);
-    const spotlights = aiWeekly?.spotlights ?? buildCampaignSpotlights(campaigns);
-    const weeklyEngine: EngineKind | null = aiWeekly?.engine ?? null;
-    const conversionSeries = dailySeries(campaigns, 7, "conversions");
+    const weekSummary = composeWeeklySummary(summary.trendPct.spend, summary.trendPct.conversions);
+    const recommendations = summary.weeklyRecommendations;
 
     const rangeEnd = new Date();
     const rangeStart = new Date(rangeEnd);
@@ -134,40 +41,26 @@ export default function HomePage() {
 
     return (
       <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-        <SimpleWeekHeader healthy={summary.healthy} subtitle={summary.subtitle} rangeStart={rangeStart} rangeEnd={rangeEnd} />
+        {dataNotice}
+        <SimpleWeekHeader healthy={weekSummary.healthy} subtitle={weekSummary.subtitle} rangeStart={rangeStart} rangeEnd={rangeEnd} />
 
         <WeeklySummaryHighlight
-          headline={summary.headline}
-          highlight={summary.highlight}
-          badge={summary.badge}
-          healthy={summary.healthy}
-          spend={{ current: last7Spend, previous: combine(campaigns, 14, "spend") - last7Spend }}
-          conversions={{ current: last7Conversions, previous: prevConversions }}
-          series={conversionSeries}
+          headline={weekSummary.headline}
+          highlight={weekSummary.highlight}
+          badge={weekSummary.badge}
+          healthy={weekSummary.healthy}
+          spend={{ current: summary.last7.spend, previous: summary.prev7.spend }}
+          conversions={{ current: summary.last7.conversions, previous: summary.prev7.conversions }}
         />
 
-        <CampaignSpotlightCards spotlights={spotlights} engine={weeklyEngine} analyzing={weeklyAnalyzing} />
-
-        <div
-          css={css`
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1rem;
-            align-items: start;
-            @media (min-width: 1024px) {
-              grid-template-columns: 2fr 1fr;
-            }
-          `}
-        >
-          <WeeklyRecommendationsCard items={recommendations} engine={weeklyEngine} analyzing={weeklyAnalyzing} />
-          <CampaignRankingCard campaigns={campaigns} />
-        </div>
+        <WeeklyRecommendationsCard items={recommendations} />
       </div>
     );
   }
 
   return (
     <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      {dataNotice}
       <div>
         <h1 css={{ fontSize: 20, fontWeight: 700, color: "var(--color-gray-900)" }}>오늘의 광고 현황</h1>
         <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
@@ -185,17 +78,17 @@ export default function HomePage() {
           }
         `}
       >
-        <SummaryCard label="오늘 지출" value={formatCompactKRW(todaySpend)} unit="원" trend={trend(campaigns, "spend")} />
-        <SummaryCard label="오늘 전환" value={formatNumber(todayConversions)} unit="건" trend={trend(campaigns, "conversions")} />
-        <SummaryCard label="7일 ROAS" value={formatPercent(roas7, 0)} trend={trend(campaigns, "revenue")} />
-        <SummaryCard label="오늘 클릭" value={formatNumber(todayClicks)} unit="회" trend={trend(campaigns, "clicks")} />
+        <SummaryCard label="오늘 지출" value={formatCompactKRW(summary.today.spend)} unit="원" trend={summary.trendPct.spend} />
+        <SummaryCard label="오늘 전환" value={formatNumber(summary.today.conversions)} unit="건" trend={summary.trendPct.conversions} />
+        <SummaryCard label="7일 ROAS" value={formatPercent(summary.last7.roas, 0)} trend={summary.trendPct.revenue} />
+        <SummaryCard label="오늘 클릭" value={formatNumber(summary.today.clicks)} unit="회" trend={summary.trendPct.clicks} />
       </div>
 
-      {insights.length > 0 && (
+      {summary.insights.length > 0 && (
         <Card>
-          <p css={{ marginBottom: "0.75rem", fontSize: 13, fontWeight: 600, color: "var(--color-gray-500)" }}>AI 인사이트</p>
+          <p css={{ marginBottom: "0.75rem", fontSize: 13, fontWeight: 600, color: "var(--color-gray-500)" }}>숫자로 본 광고 현황</p>
           <div css={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-            {insights.map((insight) => (
+            {summary.insights.map((insight) => (
               <div key={insight.id} css={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
                 <span
                   css={{
@@ -230,7 +123,7 @@ export default function HomePage() {
           </Link>
         </div>
         <div css={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-          {campaigns.slice(0, 4).map((c) => (
+          {summary.recentCampaigns.map((c) => (
             <CampaignListItem key={c.id} campaign={c} />
           ))}
         </div>

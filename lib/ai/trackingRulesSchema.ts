@@ -4,29 +4,6 @@ import { EVENT_ORDER } from "@/lib/tracking/events";
 // page_view는 pixel.js가 항상 자동으로 보내므로, AI가 요소에 배정할 수 있는 이벤트 종류에서는 제외한다.
 export const ASSIGNABLE_EVENT_TYPES = EVENT_ORDER.filter((t) => t !== "page_view") as ConversionEventType[];
 
-export const TRACKING_RULES_RESPONSE_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["rules"],
-  properties: {
-    rules: {
-      type: "array",
-      description: "전환 행동을 나타내는 요소만 골라 규칙으로 만든다. 확신이 없는 요소는 포함하지 않는다.",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["index", "trigger", "eventType", "label"],
-        properties: {
-          index: { type: "number", description: "입력 요소 목록에서 이 요소의 index 값" },
-          trigger: { type: "string", enum: ["click", "submit"], description: "form 요소는 submit, 나머지는 click" },
-          eventType: { type: "string", enum: ASSIGNABLE_EVENT_TYPES },
-          label: { type: "string", description: "이 규칙이 무엇을 추적하는지 한국어로 짧게, 예: '문의하기 버튼'" },
-        },
-      },
-    },
-  },
-} as const;
-
 export const TRACKING_RULES_RESPONSE_SCHEMA_EN = {
   type: "object",
   additionalProperties: false,

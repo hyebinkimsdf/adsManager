@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated seed data (scripts/generate-seed-sql.ts로 재생성 가능)
+/scripts/seed-*.sql

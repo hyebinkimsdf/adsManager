@@ -7,13 +7,15 @@ import type { RewardCampaign } from "@/lib/mock/types";
 
 export const rewardCampaignsQueryKey = ["reward-campaigns"] as const;
 
-export function useRewardCampaigns(): RewardCampaign[] {
-  const { data } = useQuery({
+export function useRewardCampaignsQuery() {
+  return useQuery({
     queryKey: rewardCampaignsQueryKey,
     queryFn: repo.getRewardCampaigns,
-    initialData: [] as RewardCampaign[],
   });
-  return data;
+}
+
+export function useRewardCampaigns(): RewardCampaign[] {
+  return useRewardCampaignsQuery().data ?? [];
 }
 
 export async function createRewardCampaign(campaign: RewardCampaign) {

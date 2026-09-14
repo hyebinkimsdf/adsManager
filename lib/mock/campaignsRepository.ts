@@ -1,5 +1,6 @@
 import { CAMPAIGNS } from "./campaigns";
 import type { Campaign, Targeting } from "./types";
+import { buildDashboardSummary, type DashboardSummary } from "@/lib/insights";
 
 const API_BASE = "/api/campaigns";
 
@@ -29,6 +30,19 @@ export function getCampaignsSeed(): Campaign[] {
 
 export function getCampaigns(): Promise<Campaign[]> {
   return fetchJson<Campaign[]>(API_BASE);
+}
+
+export function getCampaign(id: string): Promise<Campaign> {
+  return fetchJson<Campaign>(`${API_BASE}/${id}`);
+}
+
+export function getDashboardSummary(): Promise<DashboardSummary> {
+  return fetchJson<DashboardSummary>(`${API_BASE}/summary`);
+}
+
+// 서버 첫 응답이 오기 전 화면이 비어 보이지 않도록 쓰는 동기 시드 스냅샷 — getCampaignsSeed와 같은 목적.
+export function getDashboardSummarySeed(): DashboardSummary {
+  return buildDashboardSummary(CAMPAIGNS);
 }
 
 export function updateBudget(id: string, dailyBudget: number): Promise<Campaign> {

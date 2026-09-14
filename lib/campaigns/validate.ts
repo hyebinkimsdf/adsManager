@@ -1,7 +1,7 @@
 import type { AdType, Campaign, CampaignIndustry, CampaignStatus, DayMetric, DisplayObjective, Targeting } from "@/lib/mock/types";
 
 export const AD_TYPES: AdType[] = ["display", "reward"];
-export const OBJECTIVES: DisplayObjective[] = ["purchase", "app_install", "leads", "visit"];
+export const OBJECTIVES: DisplayObjective[] = ["purchase", "app_install", "leads", "visit", "reach"];
 export const INDUSTRIES: CampaignIndustry[] = [
   "food",
   "beauty",

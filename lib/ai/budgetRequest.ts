@@ -90,6 +90,15 @@ export function handleBudgetRequest(
     };
   }
 
+  // 새 캠페인 설정 화면을 거친 캠페인은 dailyBudget이 참고용 추정치일 뿐 실제 예산이 아니라서
+  // 채팅으로 조정하면 화면에 보이는 총 예산과 어긋난다. 여기서 바꾸는 대신 상세 화면으로 안내한다.
+  if (target.setupStatus) {
+    return {
+      kind: "resolved",
+      reply: { reply: `${target.name}은 아직 채팅으로 예산을 바꿀 수 없어요. 캠페인 상세 화면에서 확인해 주세요.`, actions: [] },
+    };
+  }
+
   const amount = parseAmount(text);
   if (amount !== null) {
     if (amount === target.dailyBudget) {

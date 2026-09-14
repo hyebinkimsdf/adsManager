@@ -7,9 +7,10 @@ import { HiCheckCircle, HiExclamationTriangle, HiXCircle, HiOutlineTrash } from 
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { useCampaigns } from "@/lib/mock/store";
-import { useRewardCampaigns } from "@/lib/reward/useRewardCampaigns";
-import { useCreatives, createCreative, deleteCreative } from "@/lib/creative/useCreatives";
+import { useCampaignsQuery } from "@/lib/mock/store";
+import { useRewardCampaignsQuery } from "@/lib/reward/useRewardCampaigns";
+import { useCreativesQuery, createCreative, deleteCreative } from "@/lib/creative/useCreatives";
+import { DataState } from "@/components/ui/DataState";
 import { checkCopy, checkImage, checkLandingUrl, buildPrecheckReport, type PrecheckStatus } from "@/lib/creative/precheck";
 import { PRODUCT_LABEL } from "@/lib/reward/rules";
 import { formatDateTime } from "@/lib/format";
@@ -60,9 +61,12 @@ function nextId() {
 }
 
 export default function CreativesPage() {
-  const campaigns = useCampaigns();
-  const rewardCampaigns = useRewardCampaigns();
-  const creatives = useCreatives();
+  const campaignsQuery = useCampaignsQuery();
+  const rewardQuery = useRewardCampaignsQuery();
+  const creativesQuery = useCreativesQuery();
+  const campaigns = useMemo(() => campaignsQuery.data ?? [], [campaignsQuery.data]);
+  const rewardCampaigns = useMemo(() => rewardQuery.data ?? [], [rewardQuery.data]);
+  const creatives = creativesQuery.data ?? [];
 
   const targets = useMemo(
     () => [
@@ -135,12 +139,16 @@ export default function CreativesPage() {
     }
   }
 
+  const queries = [campaignsQuery, rewardQuery, creativesQuery];
+  if (queries.some((query) => query.isError)) return <DataState title="광고 소재를 불러오지 못했어요" error onRetry={() => { queries.forEach((query) => void query.refetch()); }} />;
+  if (queries.some((query) => query.isPending)) return <DataState title="광고 소재를 불러오고 있어요" />;
+
   return (
     <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div>
-        <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>소재 · AI 사전 심사</h1>
+        <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>광고 소재 · 기본 점검</h1>
         <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
-          토스애즈 심사 정책(허위·과장 표현, 개인정보 노출, 이미지 비율 등)을 기준으로 심사 신청 전에 미리 점검해요.
+          문구와 이미지 크기를 정해진 기준으로 확인해요. 나노 AI나 실제 광고 심사는 아니에요.
         </p>
       </div>
 
@@ -190,7 +198,7 @@ export default function CreativesPage() {
           </div>
 
           <div>
-            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>배너 이미지 (선택)</label>
+            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>이미지 크기 확인 (파일은 저장하지 않아요)</label>
             <input
               type="file"
               accept="image/*"
@@ -215,13 +223,13 @@ export default function CreativesPage() {
           {saveError && <p css={{ fontSize: 12.5, color: "var(--color-red-500)" }}>{saveError}</p>}
 
           <Button disabled={!canSave || saving} onClick={handleSave} css={{ alignSelf: "flex-start" }}>
-            {saving ? "저장 중..." : "심사 신청하기"}
+            {saving ? "저장 중..." : "소재 정보 저장"}
           </Button>
         </Card>
 
         <Card css={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <CardHeader>
-            <CardTitle>AI 사전 심사 결과</CardTitle>
+            <CardTitle>기본 점검 결과</CardTitle>
           </CardHeader>
 
           <div
@@ -234,8 +242,8 @@ export default function CreativesPage() {
               padding: 0.875rem 1rem;
             `}
           >
-            <span css={{ fontSize: 13, color: "var(--color-gray-600)" }}>심사 통과 예상도</span>
-            <span css={{ fontSize: 26, fontWeight: 800, color: scoreColor(report.score) }}>{report.score}%</span>
+            <span css={{ fontSize: 13, color: "var(--color-gray-600)" }}>기본 점검 점수</span>
+            <span css={{ fontSize: 26, fontWeight: 800, color: scoreColor(report.score) }}>{report.score}점</span>
           </div>
 
           <div css={{ display: "flex", flexDirection: "column" }}>
@@ -262,14 +270,14 @@ export default function CreativesPage() {
             })}
           </div>
           <p css={{ fontSize: 11.5, color: "var(--color-gray-400)" }}>
-            실제 심사는 사람이 최종 판단해요. 이 결과는 반려 가능성이 있는 항목을 미리 알려주는 참고용이에요.
+            참고용 점수예요. 심사 통과 확률이 아니며, 광고 매체로 심사를 신청하지 않아요.
           </p>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>심사 신청한 소재</CardTitle>
+          <CardTitle>저장한 소재</CardTitle>
         </CardHeader>
         <div css={{ display: "flex", flexDirection: "column" }}>
           {creatives.map((c, i) => (
@@ -284,7 +292,7 @@ export default function CreativesPage() {
               `}
             >
               <span css={{ flexShrink: 0, fontSize: 15, fontWeight: 800, color: scoreColor(c.precheckScore), width: "3rem" }}>
-                {c.precheckScore}%
+                {c.precheckScore}점
               </span>
               <div css={{ minWidth: 0, flex: 1 }}>
                 <p css={{ fontSize: 13.5, fontWeight: 600, color: "var(--color-gray-900)" }}>{c.headline}</p>
@@ -292,11 +300,11 @@ export default function CreativesPage() {
                   {c.campaignName} · {formatDateTime(c.createdAt)}
                 </p>
               </div>
-              <Badge tone="gray">심사중</Badge>
+              <Badge tone="gray">정보 저장됨</Badge>
               <button
                 type="button"
                 aria-label="삭제"
-                onClick={() => deleteCreative(c.id)}
+                onClick={() => { void deleteCreative(c.id).catch(() => setSaveError("소재를 삭제하지 못했어요. 다시 눌러주세요.")); }}
                 css={css`
                   display: flex;
                   height: 2rem;
@@ -318,7 +326,7 @@ export default function CreativesPage() {
           ))}
           {creatives.length === 0 && (
             <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-500)" }}>
-              아직 심사 신청한 소재가 없어요.
+              아직 저장한 소재가 없어요.
             </p>
           )}
         </div>

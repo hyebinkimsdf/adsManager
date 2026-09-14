@@ -7,9 +7,10 @@ import { HiOutlineTrash, HiSparkles } from "react-icons/hi2";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { useCampaigns } from "@/lib/mock/store";
-import { useConversionEvents } from "@/lib/tracking/useConversionEvents";
-import { useAudiences, createAudience, deleteAudience } from "@/lib/audiences/useAudiences";
+import { useCampaignsQuery } from "@/lib/mock/store";
+import { useConversionEventsQuery } from "@/lib/tracking/useConversionEvents";
+import { useAudiencesQuery, createAudience, deleteAudience } from "@/lib/audiences/useAudiences";
+import { DataState } from "@/components/ui/DataState";
 import { buildAudienceRecommendations, type AudienceRecommendation } from "@/lib/audiences/insights";
 import { estimateRetargetingSize, estimateConversionSize, LOOKBACK_OPTIONS } from "@/lib/audiences/estimate";
 import { EVENT_LABEL, EVENT_ORDER } from "@/lib/tracking/events";
@@ -59,9 +60,12 @@ const pillStyle = (active: boolean) => css`
 `;
 
 export default function AudiencesPage() {
-  const campaigns = useCampaigns();
-  const events = useConversionEvents();
-  const audiences = useAudiences();
+  const campaignsQuery = useCampaignsQuery();
+  const eventsQuery = useConversionEventsQuery();
+  const audiencesQuery = useAudiencesQuery();
+  const campaigns = useMemo(() => campaignsQuery.data ?? [], [campaignsQuery.data]);
+  const events = useMemo(() => eventsQuery.data ?? [], [eventsQuery.data]);
+  const audiences = audiencesQuery.data ?? [];
 
   const recommendations = useMemo(() => buildAudienceRecommendations(campaigns, events), [campaigns, events]);
 
@@ -142,15 +146,20 @@ export default function AudiencesPage() {
     }
   }
 
+  const queries = [campaignsQuery, eventsQuery, audiencesQuery];
+  if (queries.some((query) => query.isError)) return <DataState title="고객 데이터를 불러오지 못했어요" error onRetry={() => { queries.forEach((query) => void query.refetch()); }} />;
+  if (queries.some((query) => query.isPending)) return <DataState title="고객 데이터를 불러오고 있어요" />;
+
   return (
     <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div>
         <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>타겟</h1>
         <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
-          리타겟팅·전환추적·고객목록 3가지 방식으로 직접타겟팅을 만들고, 캠페인에서 재사용하세요.
+          다시 만나고 싶은 고객의 조건을 저장해요. 광고 매체로 보내는 기능은 아직 연결되지 않았어요.
         </p>
       </div>
 
+      <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>추천은 저장된 조건으로 계산해요. 나노 AI는 사용하지 않아요. 최근 기록 최대 200건 기준이며, 같은 고객의 여러 행동이 포함될 수 있어요. 고객 파일은 이름과 줄 수만 저장해요.</p>
       {recommendations.length > 0 && (
         <div css={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           {recommendations.map((rec) => (
@@ -369,7 +378,7 @@ export default function AudiencesPage() {
               <button
                 type="button"
                 aria-label={`${a.name} 삭제`}
-                onClick={() => deleteAudience(a.id)}
+                onClick={() => { void deleteAudience(a.id).catch(() => setSaveError("고객 조건을 삭제하지 못했어요. 다시 눌러주세요.")); }}
                 css={css`
                   display: flex;
                   height: 2rem;

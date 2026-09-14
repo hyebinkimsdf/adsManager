@@ -17,11 +17,9 @@ import {
 import type { IconType } from "react-icons";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { EngineBadge } from "@/components/dashboard/EngineBadge";
 import { adjustBudgetByPercent } from "@/lib/mock/store";
 import { openAssistantDock } from "@/lib/ui/assistantDock";
 import type { WeeklyRecommendation } from "@/lib/insights";
-import type { EngineKind } from "@/lib/ai/types";
 
 const TONE: Record<WeeklyRecommendation["tone"], { bg: string; color: string; icon: IconType }> = {
   warning: { bg: "var(--color-red-50)", color: "var(--color-red-500)", icon: HiArrowTrendingDown },
@@ -37,15 +35,7 @@ async function applyRecommendation(item: WeeklyRecommendation) {
   }
 }
 
-export function WeeklyRecommendationsCard({
-  items,
-  engine,
-  analyzing,
-}: {
-  items: WeeklyRecommendation[];
-  engine: EngineKind | null;
-  analyzing?: boolean;
-}) {
+export function WeeklyRecommendationsCard({ items }: { items: WeeklyRecommendation[] }) {
   const [state, setState] = useState<Record<string, ApplyState>>({});
   const [errorMessage, setErrorMessage] = useState<Record<string, string>>({});
 
@@ -86,12 +76,11 @@ export function WeeklyRecommendationsCard({
           <div>
             <div css={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
               <p css={{ fontSize: 15, fontWeight: 700, color: "var(--color-gray-900)" }}>
-                AI가 찾은 이번 주 추천 액션 <span css={{ color: "var(--color-gray-400)", fontWeight: 500 }}>{items.length}개</span>
+                확인해 볼 광고 설정 <span css={{ color: "var(--color-gray-400)", fontWeight: 500 }}>{items.length}개</span>
               </p>
-              <EngineBadge engine={engine} analyzing={analyzing} />
             </div>
             <p css={{ marginTop: "0.125rem", fontSize: 13, color: "var(--color-gray-500)" }}>
-              지금 이 {items.length}가지만 실행하면 더 좋은 결과를 만들 수 있어요.
+              숫자를 비교해 골랐어요. 바꿀 내용은 직접 확인해 주세요.
             </p>
           </div>
         </div>

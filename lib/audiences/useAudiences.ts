@@ -7,13 +7,15 @@ import type { Audience } from "@/lib/mock/types";
 
 export const audiencesQueryKey = ["audiences"] as const;
 
-export function useAudiences(): Audience[] {
-  const { data } = useQuery({
+export function useAudiencesQuery() {
+  return useQuery({
     queryKey: audiencesQueryKey,
     queryFn: repo.getAudiences,
-    initialData: [] as Audience[],
   });
-  return data;
+}
+
+export function useAudiences(): Audience[] {
+  return useAudiencesQuery().data ?? [];
 }
 
 export async function createAudience(audience: Audience) {

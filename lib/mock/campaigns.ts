@@ -12,7 +12,7 @@ export function mulberry32(seed: number) {
   };
 }
 
-function buildHistory(seed: number, baseSpend: number, trend: number): DayMetric[] {
+export function buildHistory(seed: number, baseSpend: number, trend: number): DayMetric[] {
   const rand = mulberry32(seed);
   const days: DayMetric[] = [];
   for (let i = 13; i >= 0; i--) {
@@ -177,4 +177,5 @@ export const OBJECTIVE_LABEL: Record<DisplayObjective, string> = {
   app_install: "앱 설치 유도",
   leads: "잠재고객 모으기",
   visit: "방문 유도",
+  reach: "도달률 높이기",
 };

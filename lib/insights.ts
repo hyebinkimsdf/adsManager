@@ -1,8 +1,6 @@
 import type { Campaign, DayMetric } from "./mock/types";
 import { sumHistory, trendPercent } from "./mock/campaigns";
 import { formatKRW, formatSignedPercent } from "./format";
-import type { WeeklyCampaignInput } from "./ai/weeklyAnalysisPrompt";
-import type { WeeklyAnalysisRecommendation, WeeklyAnalysisSpotlight } from "./ai/weeklyAnalysisSchema";
 
 export interface Insight {
   id: string;
@@ -124,21 +122,6 @@ export function buildInsights(campaigns: Campaign[]): Insight[] {
   return insights.slice(0, 2);
 }
 
-/**
- * 최근 `days`일간 캠페인 전체를 합산한 일별 시계열. history는 날짜 인덱스가 캠페인 간 동일하게 정렬돼 있어
- * 인덱스 기준으로 그대로 더할 수 있다.
- */
-export function dailySeries(campaigns: Campaign[], days: number, key: keyof DayMetric): number[] {
-  const series = new Array(days).fill(0) as number[];
-  for (const c of campaigns) {
-    const slice = c.history.slice(-days);
-    slice.forEach((d, i) => {
-      series[i] += d[key] as number;
-    });
-  }
-  return series;
-}
-
 export interface WeeklyRecommendation {
   id: string;
   tone: "warning" | "positive" | "info";
@@ -186,29 +169,45 @@ function estimateConversionRateDelta(campaignRate: number, overallRate: number):
 }
 
 /**
- * 메인 대시보드 "이번 주 추천 액션" 카드용 — 최근 7일 데이터에서 바로 실행 가능한 액션 최대 3개를 뽑는다.
- * AI 분석이 불가능할 때 쓰는 규칙 기반 폴백. (실제 AI 경로는 buildWeeklyCampaignInputs + hydrateWeeklyRecommendation)
+ * "이번 주 추천 액션" 카드의 판단(어떤 캠페인을, 어떻게, 몇 % 바꿀지)과 설명 문구를 모두 규칙으로
+ * 결정한다. campaignId/kind/percent가 3가지 kind로 한정돼 있고 설명에 필요한 수치도 이미 다 갖고
+ * 있어서, title/detail도 AI에게 새로 쓰게 하지 않고 여기서 숫자를 그대로 문장에 끼워 넣는다.
  */
-export function buildWeeklyRecommendations(campaigns: Campaign[]): WeeklyRecommendation[] {
+export interface DecidedRecommendation {
+  id: string;
+  campaignId: string;
+  campaignName: string;
+  kind: WeeklyRecommendation["kind"];
+  tone: WeeklyRecommendation["tone"];
+  percent: number;
+  buttonLabel: string;
+  impactLabel: string;
+  impactValue: string;
+  title: string;
+  detail: string;
+}
+
+function decideWeeklyRecommendations(campaigns: Campaign[]): DecidedRecommendation[] {
   const withTotals = withLast7Totals(campaigns);
-  const results: WeeklyRecommendation[] = [];
+  const results: DecidedRecommendation[] = [];
 
   const worst = [...withTotals].sort((a, b) => a.totals.roas - b.totals.roas)[0];
   if (worst && worst.totals.roas < 150) {
     const percent = -20;
     results.push({
       id: `low-eff-${worst.c.id}`,
+      campaignId: worst.c.id,
+      campaignName: worst.c.name,
+      kind: "lower_budget",
       tone: "warning",
+      percent,
+      buttonLabel: "적용하기",
+      impactLabel: "예상 절감 금액",
+      impactValue: estimateSavings(worst.totals.spend, percent),
       title: `${worst.c.name}의 예산을 줄이는 게 좋아요`,
       detail: `최근 7일간 ${formatKRW(worst.totals.spend)}원이 사용됐지만, 전환이 ${
         worst.totals.conversions === 0 ? "없었어요" : "적었어요"
       }.`,
-      buttonLabel: "적용하기",
-      impactLabel: "예상 절감 금액",
-      impactValue: estimateSavings(worst.totals.spend, percent),
-      campaignId: worst.c.id,
-      kind: "lower_budget",
-      percent,
     });
   }
 
@@ -219,15 +218,16 @@ export function buildWeeklyRecommendations(campaigns: Campaign[]): WeeklyRecomme
     const percent = 15;
     results.push({
       id: `raise-budget-${best.c.id}`,
+      campaignId: best.c.id,
+      campaignName: best.c.name,
+      kind: "raise_budget",
       tone: "positive",
-      title: "성과가 좋은 캠페인의 예산을 늘려보세요",
-      detail: `${best.c.name}의 예산을 15% 늘리면, 더 많은 전환을 기대할 수 있어요.`,
+      percent,
       buttonLabel: "적용하기",
       impactLabel: "예상 추가 전환",
       impactValue: estimateExtraConversions(best.totals.conversions, percent),
-      campaignId: best.c.id,
-      kind: "raise_budget",
-      percent,
+      title: "성과가 좋은 캠페인의 예산을 늘려보세요",
+      detail: `${best.c.name}의 예산을 15% 늘리면, 더 많은 전환을 기대할 수 있어요.`,
     });
   }
 
@@ -237,179 +237,39 @@ export function buildWeeklyRecommendations(campaigns: Campaign[]): WeeklyRecomme
     const topRate = topConversion.totals.clicks > 0 ? (topConversion.totals.conversions / topConversion.totals.clicks) * 100 : 0;
     results.push({
       id: `target-${topConversion.c.id}`,
+      campaignId: topConversion.c.id,
+      campaignName: topConversion.c.name,
+      kind: "focus_target",
       tone: "info",
-      title: `${topConversion.c.targeting.ageRange.replace("-", "~")}세 타겟에 더 집중해보세요`,
-      detail: "이 연령대에서 문의가 가장 많아요.",
+      percent: 0,
       buttonLabel: "설정하기",
       impactLabel: "예상 전환율",
       impactValue: estimateConversionRateDelta(topRate, overallRate),
-      campaignId: topConversion.c.id,
-      kind: "focus_target",
-      percent: 0,
+      title: `${topConversion.c.targeting.ageRange.replace("-", "~")}세 타겟에 더 집중해보세요`,
+      detail: "이 연령대에서 문의가 가장 많아요.",
     });
   }
 
   return results.slice(0, 3);
 }
 
-const TONE_BY_KIND: Record<WeeklyRecommendation["kind"], WeeklyRecommendation["tone"]> = {
-  lower_budget: "warning",
-  raise_budget: "positive",
-  focus_target: "info",
-};
-
-const BUTTON_LABEL_BY_KIND: Record<WeeklyRecommendation["kind"], string> = {
-  lower_budget: "적용하기",
-  raise_budget: "적용하기",
-  focus_target: "설정하기",
-};
-
-const IMPACT_LABEL_BY_KIND: Record<WeeklyRecommendation["kind"], string> = {
-  lower_budget: "예상 절감 금액",
-  raise_budget: "예상 추가 전환",
-  focus_target: "예상 전환율",
-};
-
-/** AI가 골라준 캠페인 요약(id/name/dailyBudget/최근 7일 지표 등)을 만든다. */
-export function buildWeeklyCampaignInputs(campaigns: Campaign[]): WeeklyCampaignInput[] {
-  return withLast7Totals(campaigns).map(({ c, totals }) => ({
-    id: c.id,
-    name: c.name,
-    dailyBudget: c.dailyBudget,
-    last7Spend: totals.spend,
-    last7Conversions: totals.conversions,
-    last7Clicks: totals.clicks,
-    roas: totals.roas,
-    conversionsTrendPercent: trendPercent(c.history, "conversions"),
-    ageRange: c.targeting.ageRange,
+/**
+ * 메인 대시보드 "이번 주 추천 액션" 카드용 — 판단(campaignId/kind/percent)과 설명 문구(title/detail)
+ * 모두 규칙 엔진이 결정한다. AI 생성·번역 왕복 없이 항상 즉시, 동일하게 만들어진다.
+ */
+export function buildWeeklyRecommendations(campaigns: Campaign[]): WeeklyRecommendation[] {
+  return decideWeeklyRecommendations(campaigns).map((d) => ({
+    id: d.id,
+    tone: d.tone,
+    title: d.title,
+    detail: d.detail,
+    buttonLabel: d.buttonLabel,
+    impactLabel: d.impactLabel,
+    impactValue: d.impactValue,
+    campaignId: d.campaignId,
+    kind: d.kind,
+    percent: d.percent,
   }));
-}
-
-/**
- * AI가 고른 추천(campaignId·kind·title·detail·percent)에 실제 캠페인 데이터를 붙여 화면에 쓸 형태로 만든다.
- * campaignId가 실제 캠페인 목록에 없으면(모델이 지어냈으면) null을 반환해 걸러낸다 — 수치는 항상 코드가 계산한다.
- */
-export function hydrateWeeklyRecommendation(
-  campaigns: Campaign[],
-  rec: WeeklyAnalysisRecommendation
-): WeeklyRecommendation | null {
-  const withTotals = withLast7Totals(campaigns);
-  const match = withTotals.find((w) => w.c.id === rec.campaignId);
-  if (!match) return null;
-  if (!["lower_budget", "raise_budget", "focus_target"].includes(rec.kind)) return null;
-
-  const percent =
-    rec.kind === "focus_target"
-      ? 0
-      : rec.kind === "lower_budget"
-      ? -Math.max(1, Math.min(30, Math.round(Math.abs(rec.percent || 20))))
-      : Math.max(1, Math.min(30, Math.round(Math.abs(rec.percent || 15))));
-
-  const impactValue =
-    rec.kind === "lower_budget"
-      ? estimateSavings(match.totals.spend, percent)
-      : rec.kind === "raise_budget"
-      ? estimateExtraConversions(match.totals.conversions, percent)
-      : estimateConversionRateDelta(
-          match.totals.clicks > 0 ? (match.totals.conversions / match.totals.clicks) * 100 : 0,
-          overallConversionRate(withTotals)
-        );
-
-  return {
-    id: `ai-${rec.kind}-${match.c.id}`,
-    tone: TONE_BY_KIND[rec.kind],
-    title: rec.title,
-    detail: rec.detail,
-    buttonLabel: BUTTON_LABEL_BY_KIND[rec.kind],
-    impactLabel: IMPACT_LABEL_BY_KIND[rec.kind],
-    impactValue,
-    campaignId: match.c.id,
-    kind: rec.kind,
-    percent,
-  };
-}
-
-export interface CampaignSpotlight {
-  id: string;
-  tag: "best" | "rising" | "watch";
-  campaignId: string;
-  name: string;
-  conversions: number;
-  trendPct: number;
-  series: number[];
-}
-
-function withSpotlightStats(campaigns: Campaign[]) {
-  return campaigns
-    .map((c) => ({
-      c,
-      totals: sumHistory(c.history.slice(-7)),
-      trendPct: trendPercent(c.history, "conversions"),
-      series: c.history.slice(-7).map((d) => d.conversions),
-    }))
-    .filter((w) => w.totals.spend > 0);
-}
-
-/**
- * "캠페인 한눈에 보기" 카드용 — 가장 잘하는 캠페인, 상승세인 캠페인, 개선이 필요한 캠페인을 최대 3개 뽑는다.
- * AI 분석이 불가능할 때 쓰는 규칙 기반 폴백. (실제 AI 경로는 hydrateWeeklySpotlight)
- */
-export function buildCampaignSpotlights(campaigns: Campaign[]): CampaignSpotlight[] {
-  const withStats = withSpotlightStats(campaigns);
-  if (withStats.length === 0) return [];
-
-  const results: CampaignSpotlight[] = [];
-  const used = new Set<string>();
-
-  const toSpotlight = (w: (typeof withStats)[number], tag: CampaignSpotlight["tag"]): CampaignSpotlight => ({
-    id: `${tag}-${w.c.id}`,
-    tag,
-    campaignId: w.c.id,
-    name: w.c.name,
-    conversions: w.totals.conversions,
-    trendPct: w.trendPct,
-    series: w.series,
-  });
-
-  const best = [...withStats].sort((a, b) => b.totals.roas - a.totals.roas)[0];
-  if (best) {
-    results.push(toSpotlight(best, "best"));
-    used.add(best.c.id);
-  }
-
-  const rising = [...withStats].filter((w) => !used.has(w.c.id)).sort((a, b) => b.trendPct - a.trendPct)[0];
-  if (rising && rising.trendPct > 0) {
-    results.push(toSpotlight(rising, "rising"));
-    used.add(rising.c.id);
-  }
-
-  const watch = [...withStats].filter((w) => !used.has(w.c.id)).sort((a, b) => a.totals.roas - b.totals.roas)[0];
-  if (watch) {
-    results.push(toSpotlight(watch, "watch"));
-  }
-
-  return results.slice(0, 3);
-}
-
-/**
- * AI가 고른 스포트라이트(campaignId·tag)에 실제 캠페인 데이터를 붙인다.
- * campaignId가 실제 캠페인 목록에 없으면 null을 반환해 걸러낸다.
- */
-export function hydrateWeeklySpotlight(campaigns: Campaign[], s: WeeklyAnalysisSpotlight): CampaignSpotlight | null {
-  const withStats = withSpotlightStats(campaigns);
-  const match = withStats.find((w) => w.c.id === s.campaignId);
-  if (!match) return null;
-  if (!["best", "rising", "watch"].includes(s.tag)) return null;
-
-  return {
-    id: `ai-${s.tag}-${match.c.id}`,
-    tag: s.tag,
-    campaignId: match.c.id,
-    name: match.c.name,
-    conversions: match.totals.conversions,
-    trendPct: match.trendPct,
-    series: match.series,
-  };
 }
 
 export interface WeeklySummary {
@@ -477,33 +337,91 @@ export function composeWeeklySummary(spendTrendPct: number, conversionsTrendPct:
   };
 }
 
-export type RankMetric = "spend" | "conversions" | "conversionRate";
+/** 캠페인별 최근 N일 지표 합산 — 캠페인 수와 무관하게 전체를 한 번 순회한다. */
+export function combine(campaigns: Campaign[], days: number, key: keyof DayMetric): number {
+  return campaigns.reduce((sum, c) => {
+    const slice = c.history.slice(-days);
+    return sum + slice.reduce((s, d) => s + (d[key] as number), 0);
+  }, 0);
+}
 
-export interface CampaignRankRow {
-  campaignId: string;
-  name: string;
-  value: number;
-  displayValue: string;
+/** 최근 7일 대비 그 이전 7일(8~14일 전) 증감률. */
+export function trend(campaigns: Campaign[], key: keyof DayMetric): number {
+  const recent = combine(campaigns, 7, key);
+  const previous = combine(campaigns, 14, key) - recent;
+  if (previous === 0) return 0;
+  return ((recent - previous) / previous) * 100;
+}
+
+const TOP_CAMPAIGNS_LIMIT = 20;
+const RECENT_CAMPAIGNS_LIMIT = 4;
+
+/**
+ * 최근 7일 지출 기준 상위 N개 캠페인만 추린다 — `decideWeeklyRecommendations`의 판단 대상과
+ * AssistantDock 컨텍스트가 전체 캠페인 수와 무관하게 일정한 크기를 유지하도록 하기 위함.
+ */
+export function pickTopCampaignsBySpend(campaigns: Campaign[], limit = TOP_CAMPAIGNS_LIMIT): Campaign[] {
+  return [...campaigns]
+    .map((c) => ({ c, spend: sumHistory(c.history.slice(-7)).spend }))
+    .sort((a, b) => b.spend - a.spend)
+    .slice(0, limit)
+    .map((w) => w.c);
+}
+
+export interface DashboardSummary {
+  totalCampaignCount: number;
+  metricSources?: { live: number; demo: number; unverified: number };
+  today: { spend: number; conversions: number; clicks: number };
+  last7: { spend: number; revenue: number; conversions: number; roas: number };
+  prev7: { spend: number; conversions: number };
+  trendPct: { spend: number; conversions: number; revenue: number; clicks: number };
+  insights: Insight[];
+  weeklyRecommendations: WeeklyRecommendation[];
+  /** createdAt DESC 기준 최신 4건 — 호출부가 이미 그 순서로 정렬해 넘겨야 한다. */
+  recentCampaigns: Campaign[];
+  topCampaigns: Campaign[];
 }
 
 /**
- * "최근 7일 캠페인 성과" 카드용 — 캠페인을 선택한 지표 기준으로 최근 7일 합산 순위를 매긴다.
+ * 홈 대시보드가 필요로 하는 요약값을 한 번에 계산한다. 원래 `app/page.tsx`에서 매 렌더마다
+ * 클라이언트가 전체 캠페인 배열을 순회해 계산하던 것을 그대로 옮긴 것 — 로직 재구현이 아니라
+ * 서버(API 라우트)에서 실행해 결과 요약만 응답으로 내려보내기 위한 위치 이동이다.
  */
-export function rankCampaignsByMetric(campaigns: Campaign[], metric: RankMetric): CampaignRankRow[] {
-  return campaigns
-    .map((c) => {
-      const totals = sumHistory(c.history.slice(-7));
-      const value =
-        metric === "spend"
-          ? totals.spend
-          : metric === "conversions"
-          ? totals.conversions
-          : totals.clicks > 0
-          ? (totals.conversions / totals.clicks) * 100
-          : 0;
-      const displayValue =
-        metric === "spend" ? `${formatKRW(totals.spend)}원` : metric === "conversions" ? `${totals.conversions}건` : `${value.toFixed(1)}%`;
-      return { campaignId: c.id, name: c.name, value, displayValue };
-    })
-    .sort((a, b) => b.value - a.value);
+export function buildDashboardSummary(campaigns: Campaign[]): DashboardSummary {
+  const last7Spend = combine(campaigns, 7, "spend");
+  const last7Revenue = combine(campaigns, 7, "revenue");
+  const last7Conversions = combine(campaigns, 7, "conversions");
+  return {
+    totalCampaignCount: campaigns.length,
+    metricSources: {
+      live: campaigns.filter(c => c.metricSource === "live").length,
+      demo: campaigns.filter(c => c.metricSource === "demo").length,
+      unverified: campaigns.filter(c => c.metricSource !== "live" && c.metricSource !== "demo").length,
+    },
+    today: {
+      spend: campaigns.reduce((s, c) => s + (c.history.at(-1)?.spend ?? 0), 0),
+      conversions: campaigns.reduce((s, c) => s + (c.history.at(-1)?.conversions ?? 0), 0),
+      clicks: campaigns.reduce((s, c) => s + (c.history.at(-1)?.clicks ?? 0), 0),
+    },
+    last7: {
+      spend: last7Spend,
+      revenue: last7Revenue,
+      conversions: last7Conversions,
+      roas: last7Spend > 0 ? (last7Revenue / last7Spend) * 100 : 0,
+    },
+    prev7: {
+      spend: combine(campaigns, 14, "spend") - last7Spend,
+      conversions: combine(campaigns, 14, "conversions") - last7Conversions,
+    },
+    trendPct: {
+      spend: trend(campaigns, "spend"),
+      conversions: trend(campaigns, "conversions"),
+      revenue: trend(campaigns, "revenue"),
+      clicks: trend(campaigns, "clicks"),
+    },
+    insights: buildInsights(campaigns),
+    weeklyRecommendations: buildWeeklyRecommendations(campaigns),
+    recentCampaigns: campaigns.slice(0, RECENT_CAMPAIGNS_LIMIT),
+    topCampaigns: pickTopCampaignsBySpend(campaigns),
+  };
 }

@@ -14,6 +14,7 @@ function StatBlock({
   label,
   value,
   unit,
+  increased,
   trendGood,
   detail,
 }: {
@@ -23,6 +24,10 @@ function StatBlock({
   label: string;
   value: string;
   unit?: string;
+  /** 지난주 대비 실제 증가(true)·감소(false) 방향 — 화살표 모양(▲/▼)을 결정한다. */
+  increased: boolean | null;
+  /** 이 지표에서 그 방향이 좋은 신호인지 — 색상을 결정한다. 지표마다 "좋음"의 방향이 다르다
+   * (광고비는 줄면 좋고, 문의/구매는 늘면 좋다). */
   trendGood: boolean | null;
   detail: string;
 }) {
@@ -48,7 +53,7 @@ function StatBlock({
       <p css={{ display: "flex", alignItems: "baseline", gap: "0.25rem" }}>
         <span css={{ fontSize: 22, fontWeight: 700, color: "var(--color-gray-900)" }}>{value}</span>
         {unit && <span css={{ fontSize: 12, color: "var(--color-gray-500)" }}>{unit}</span>}
-        {trendGood !== null && (
+        {increased !== null && (
           <span
             css={{
               marginLeft: "0.125rem",
@@ -57,7 +62,7 @@ function StatBlock({
               color: trendGood ? "var(--color-green-600)" : "var(--color-red-500)",
             }}
           >
-            {trendGood ? "▼" : "▲"}
+            {increased ? "▲" : "▼"}
           </span>
         )}
       </p>
@@ -73,7 +78,6 @@ export function WeeklySummaryHighlight({
   healthy,
   spend,
   conversions,
-  series,
 }: {
   headline: string;
   highlight: string;
@@ -81,7 +85,6 @@ export function WeeklySummaryHighlight({
   healthy: boolean;
   spend: { current: number; previous: number };
   conversions: { current: number; previous: number };
-  series: number[];
 }) {
   const spendDelta = spend.current - spend.previous;
   const spendDown = spendDelta <= 0;
@@ -98,7 +101,6 @@ export function WeeklySummaryHighlight({
       : `지난주보다 ${formatNumber(Math.abs(conversionsDelta))}건 ${conversionsUp ? "늘었어요." : "줄었어요."}`;
 
   const headlineParts = highlight ? headline.split(highlight) : [headline];
-  const max = Math.max(...series, 1);
 
   return (
     <Card>
@@ -154,6 +156,7 @@ export function WeeklySummaryHighlight({
             label="광고비"
             value={formatCompactKRW(spend.current)}
             unit="원"
+            increased={spendDelta === 0 ? null : spendDelta > 0}
             trendGood={spendDelta === 0 ? null : spendDown}
             detail={spendDetail}
           />
@@ -164,58 +167,30 @@ export function WeeklySummaryHighlight({
             label="문의 / 구매"
             value={formatNumber(conversions.current)}
             unit="건"
+            increased={conversionsDelta === 0 ? null : conversionsDelta > 0}
             trendGood={conversionsDelta === 0 ? null : conversionsUp}
             detail={conversionsDetail}
           />
         </div>
 
-        <div
+        <span
           css={css`
-            display: flex;
             flex-shrink: 0;
-            flex-direction: row-reverse;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
+            align-self: flex-start;
+            white-space: nowrap;
+            border-radius: 9999px;
+            padding: 0.25rem 0.75rem;
+            font-size: 12px;
+            font-weight: 600;
+            background-color: ${healthy ? "var(--color-green-50)" : "var(--color-red-50)"};
+            color: ${healthy ? "var(--color-green-600)" : "var(--color-red-500)"};
             @media (min-width: 1024px) {
-              flex-direction: column;
-              align-items: flex-end;
-              gap: 0.75rem;
+              align-self: center;
             }
           `}
         >
-          <span
-            css={css`
-              flex-shrink: 0;
-              white-space: nowrap;
-              border-radius: 9999px;
-              padding: 0.25rem 0.75rem;
-              font-size: 12px;
-              font-weight: 600;
-              background-color: ${healthy ? "var(--color-green-50)" : "var(--color-red-50)"};
-              color: ${healthy ? "var(--color-green-600)" : "var(--color-red-500)"};
-            `}
-          >
-            {badge}
-          </span>
-          <div css={{ display: "flex", alignItems: "flex-end", gap: "0.3125rem", height: "2.75rem" }} role="img" aria-label="지난 7일 문의 추이">
-            {series.map((v, i) => {
-              const isLast = i === series.length - 1;
-              const height = Math.max(5, (v / max) * 44);
-              return (
-                <span
-                  key={i}
-                  css={css`
-                    width: 0.4375rem;
-                    border-radius: 9999px;
-                    background-color: ${isLast ? "var(--color-blue-600)" : "var(--color-gray-200)"};
-                  `}
-                  style={{ height }}
-                />
-              );
-            })}
-          </div>
-        </div>
+          {badge}
+        </span>
       </div>
     </Card>
   );
