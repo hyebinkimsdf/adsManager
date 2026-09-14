@@ -89,6 +89,12 @@ export function updateIndustry(id: string, industry: Campaign["industry"]): Prom
   return patchCampaign(id, { industry });
 }
 
+// 실제 매체 연동이 없어 진짜 실적이 안 쌓이는 지금, "확인해 볼 광고 설정" 섹션이 데이터에 실제로
+// 반응하는지 검증하기 위한 테스트 전용 — DB에 그대로 저장되므로 되돌리려면 같은 함수로 다시 써야 한다.
+export function updateHistory(id: string, history: Campaign["history"]): Promise<Campaign> {
+  return patchCampaign(id, { history });
+}
+
 export function resetToSeed(): Promise<Campaign[]> {
   return fetchJson<Campaign[]>(`${API_BASE}/reset`, { method: "POST" });
 }

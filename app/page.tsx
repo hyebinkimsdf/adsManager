@@ -11,6 +11,7 @@ import { SummaryCard } from "@/components/dashboard/SummaryCard";
 import { SimpleWeekHeader } from "@/components/dashboard/SimpleWeekHeader";
 import { WeeklySummaryHighlight } from "@/components/dashboard/WeeklySummaryHighlight";
 import { WeeklyRecommendationsCard } from "@/components/dashboard/WeeklyRecommendationsCard";
+import { PerformanceTestInjector } from "@/components/dashboard/PerformanceTestInjector";
 import { CampaignListItem } from "@/components/dashboard/CampaignListItem";
 import { Card } from "@/components/ui/Card";
 import { formatCompactKRW, formatNumber, formatPercent } from "@/lib/format";
@@ -53,6 +54,7 @@ export default function HomePage() {
           conversions={{ current: summary.last7.conversions, previous: summary.prev7.conversions }}
         />
 
+        <PerformanceTestInjector campaigns={summary.topCampaigns} />
         <WeeklyRecommendationsCard items={recommendations} />
       </div>
     );

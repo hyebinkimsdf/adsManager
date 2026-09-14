@@ -5,6 +5,7 @@ import { queryClient } from "@/lib/queryClient";
 import * as repo from "./campaignsRepository";
 import type { Campaign } from "./types";
 import { buildDashboardSummary, type DashboardSummary } from "@/lib/insights";
+import { replaceLast7Days, type TestPerformanceInput } from "@/lib/dev/testPerformanceData";
 
 export const campaignsQueryKey = ["campaigns"] as const;
 export const campaignSummaryQueryKey = ["campaigns", "summary"] as const;
@@ -176,6 +177,15 @@ export async function deleteCampaign(id: string) {
 
 export function updateIndustry(id: string, industry: Campaign["industry"]) {
   return applyUpdate(() => repo.updateIndustry(id, industry));
+}
+
+// 테스트 전용 — 실제 매체 연동이 없어 실적이 저절로 안 쌓이니, "확인해 볼 광고 설정" 섹션이 데이터
+// 변화에 실제로 반응하는지 확인해보려고 최근 7일 실적을 원하는 값으로 강제로 채워 넣는다. DB에
+// 그대로 저장된다(로컬 미리보기가 아님) — components/dashboard/PerformanceTestInjector.tsx가 쓴다.
+export function setTestPerformanceData(id: string, input: TestPerformanceInput) {
+  const current = getCachedCampaign(id);
+  if (!current) return Promise.reject(new Error("캠페인 정보를 불러오지 못했어요. 목록을 새로고침한 뒤 다시 시도해 주세요."));
+  return applyUpdate(() => repo.updateHistory(id, replaceLast7Days(current.history, input)));
 }
 
 export async function resetToSeed() {
