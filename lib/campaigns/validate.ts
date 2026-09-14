@@ -171,3 +171,42 @@ export function validateCampaignPatch(value: unknown): ValidationResult<Partial<
 
   return { ok: true, value: patch };
 }
+
+const BUDGET_CHANGE_SOURCES = ["recommendation", "manual"] as const;
+const BUDGET_CHANGE_REASON_KINDS = ["lower_budget", "raise_budget"] as const;
+
+export interface BudgetChangeMeta {
+  source: (typeof BUDGET_CHANGE_SOURCES)[number] | null;
+  reasonKind: (typeof BUDGET_CHANGE_REASON_KINDS)[number] | null;
+}
+
+/**
+ * dailyBudget PATCH에 실려오는 "왜 바뀌는지" — Campaign 자체 필드가 아니라 예산 변경 이력
+ * (BudgetAdjustment)에 원인을 남기기 위한 별도 메타데이터라 validateCampaignPatch와 분리해 검증한다.
+ */
+export function validateBudgetChangeMeta(value: unknown): ValidationResult<BudgetChangeMeta> {
+  const empty: BudgetChangeMeta = { source: null, reasonKind: null };
+  if (!value || typeof value !== "object") return { ok: true, value: empty };
+  const v = value as Record<string, unknown>;
+
+  let source: BudgetChangeMeta["source"] = null;
+  if (v.budgetChangeSource !== undefined) {
+    if (typeof v.budgetChangeSource !== "string" || !BUDGET_CHANGE_SOURCES.includes(v.budgetChangeSource as (typeof BUDGET_CHANGE_SOURCES)[number])) {
+      return { ok: false, error: `budgetChangeSource는 ${BUDGET_CHANGE_SOURCES.join("/")} 중 하나여야 합니다.` };
+    }
+    source = v.budgetChangeSource as BudgetChangeMeta["source"];
+  }
+
+  let reasonKind: BudgetChangeMeta["reasonKind"] = null;
+  if (v.budgetChangeReasonKind !== undefined) {
+    if (
+      typeof v.budgetChangeReasonKind !== "string" ||
+      !BUDGET_CHANGE_REASON_KINDS.includes(v.budgetChangeReasonKind as (typeof BUDGET_CHANGE_REASON_KINDS)[number])
+    ) {
+      return { ok: false, error: `budgetChangeReasonKind는 ${BUDGET_CHANGE_REASON_KINDS.join("/")} 중 하나여야 합니다.` };
+    }
+    reasonKind = v.budgetChangeReasonKind as BudgetChangeMeta["reasonKind"];
+  }
+
+  return { ok: true, value: { source, reasonKind } };
+}

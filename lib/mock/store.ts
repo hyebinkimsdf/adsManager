@@ -9,6 +9,7 @@ import { buildDashboardSummary, type DashboardSummary } from "@/lib/insights";
 export const campaignsQueryKey = ["campaigns"] as const;
 export const campaignSummaryQueryKey = ["campaigns", "summary"] as const;
 const campaignDetailQueryKey = (id: string) => ["campaigns", "detail", id] as const;
+const campaignBudgetAdjustmentsQueryKey = (id: string) => ["campaigns", "detail", id, "budget-adjustments"] as const;
 const emptySummary = buildDashboardSummary([]);
 
 // 서버 응답 전에는 예시 수치를 표시하지 않는다. 조회 상태와 실제 빈 결과를 구분한다.
@@ -30,6 +31,18 @@ export function campaignDetailQueryOptions(id: string) {
     placeholderData: () => getCachedCampaign(id),
     enabled: Boolean(id),
   });
+}
+
+export function campaignBudgetAdjustmentsQueryOptions(id: string) {
+  return queryOptions({
+    queryKey: campaignBudgetAdjustmentsQueryKey(id),
+    queryFn: () => repo.getBudgetAdjustments(id),
+    enabled: Boolean(id),
+  });
+}
+
+export function useBudgetAdjustmentsQuery(id: string) {
+  return useQuery(campaignBudgetAdjustmentsQueryOptions(id));
 }
 
 export function useCampaignsQuery() {
@@ -78,8 +91,11 @@ function getCachedCampaign(id: string): Campaign | undefined {
 }
 
 // 순위/집계는 서버에서 다시 계산한다. 활성 요약은 즉시, 비활성 요약은 다음 접근에 조회한다.
-function invalidateDerivedCaches() {
+// campaignId를 주면 그 캠페인의 예산 변경 이력도 함께 무효화한다(예산이 바뀌지 않은 수정에도 걸지만,
+// 무효화는 활성 구독이 있을 때만 재조회를 일으키므로 상세 화면을 안 보고 있다면 비용이 없다).
+function invalidateDerivedCaches(campaignId?: string) {
   void queryClient.invalidateQueries({ queryKey: campaignSummaryQueryKey, exact: true });
+  if (campaignId) void queryClient.invalidateQueries({ queryKey: campaignBudgetAdjustmentsQueryKey(campaignId), exact: true });
 }
 
 async function cancelAffectedReads(id: string) {
@@ -110,7 +126,7 @@ async function replaceCampaign(campaign: Campaign) {
   const resumeRefresh = await cancelAffectedReads(campaign.id);
   updateCachedList((prev) => prev.map((c) => (c.id === campaign.id ? campaign : c)), resumeRefresh);
   queryClient.setQueryData(campaignDetailQueryKey(campaign.id), campaign);
-  invalidateDerivedCaches();
+  invalidateDerivedCaches(campaign.id);
   return campaign;
 }
 
@@ -118,15 +134,17 @@ async function applyUpdate(fn: () => Promise<Campaign>): Promise<Campaign> {
   return replaceCampaign(await fn());
 }
 
+// source를 남기면 서버가 예산 변경 이력(BudgetAdjustment)에 "사람이 직접 바꿨는지/추천을 적용한
+// 건지"를 함께 기록한다 — 나중에 "이 변경이 효과가 있었는지" 볼 때 원인을 구분하는 근거가 된다.
 export function updateBudget(id: string, dailyBudget: number) {
-  return applyUpdate(() => repo.updateBudget(id, dailyBudget));
+  return applyUpdate(() => repo.updateBudget(id, dailyBudget, { source: "manual" }));
 }
 
-export function adjustBudgetByPercent(id: string, percent: number) {
+export function adjustBudgetByPercent(id: string, percent: number, reasonKind?: "lower_budget" | "raise_budget") {
   const current = getCachedCampaign(id);
   if (!current) return Promise.reject(new Error("캠페인 정보를 불러오지 못했어요. 목록을 새로고침한 뒤 다시 시도해 주세요."));
   const dailyBudget = Math.max(0, Math.round(current.dailyBudget * (1 + percent / 100)));
-  return applyUpdate(() => repo.updateBudget(id, dailyBudget));
+  return applyUpdate(() => repo.updateBudget(id, dailyBudget, { source: "recommendation", reasonKind }));
 }
 
 export function setStatus(id: string, status: Campaign["status"]) {

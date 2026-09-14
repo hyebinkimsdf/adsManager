@@ -28,6 +28,7 @@ export interface CampaignRow {
   endDate?: string | null;
   trackingConnectionId?: string | null;
   setupStatus?: "draft" | "configured" | null;
+  lastBudgetAdjustmentAt?: string | null;
 }
 
 export function toCampaign(row: CampaignRow): Campaign {
@@ -42,6 +43,7 @@ export function toCampaign(row: CampaignRow): Campaign {
     targeting: JSON.parse(row.targeting) as Targeting,
     history: JSON.parse(row.history) as DayMetric[],
     metricSource: (row.metricSource as Campaign["metricSource"]) ?? "unverified",
+    lastBudgetAdjustmentAt: row.lastBudgetAdjustmentAt ?? null,
     ...(row.setupStatus ? {
       totalBudget: row.totalBudget ?? undefined,
       startDate: row.startDate ?? undefined,

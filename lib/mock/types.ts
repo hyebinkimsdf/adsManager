@@ -48,6 +48,9 @@ export interface Campaign {
   endDate?: string | null;
   trackingConnectionId?: string | null;
   setupStatus?: "draft" | "configured";
+  /** dailyBudget이 마지막으로 바뀐 시각(ISO 8601, 서버가 PATCH 시점에 기록). 방금 조정한 캠페인을
+   *  관찰 기간 동안 예산 추천 후보에서 빼는 데 쓴다(lib/insights.ts의 BUDGET_COOLDOWN_DAYS). */
+  lastBudgetAdjustmentAt?: string | null;
 }
 
 /** 토스 픽셀/전환추적코드가 실제로 수집하는 이벤트 목록 중, 이 프로젝트에서 다루는 핵심 8종 */

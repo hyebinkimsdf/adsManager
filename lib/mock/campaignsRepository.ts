@@ -1,6 +1,9 @@
 import { CAMPAIGNS } from "./campaigns";
 import type { Campaign, Targeting } from "./types";
 import { buildDashboardSummary, type DashboardSummary } from "@/lib/insights";
+// 타입만 가져온다 — lib/campaigns/budgetAdjustments.ts는 node:crypto를 쓰는 서버 전용 모듈이라
+// 런타임 코드는 절대 클라이언트 번들에 들어가면 안 된다("import type"은 컴파일 시 완전히 지워진다).
+import type { BudgetAdjustmentRow, AdjustmentEffect } from "@/lib/campaigns/budgetAdjustments";
 
 const API_BASE = "/api/campaigns";
 
@@ -13,8 +16,16 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
+// dailyBudget PATCH에 실어 보내는 "왜 바뀌는지" — 서버가 Campaign 필드로 저장하진 않지만, 예산 변경
+// 이력(BudgetAdjustment)에 원인을 남기는 데 쓴다. Campaign 자체 필드가 아니라 Partial<Campaign>과는
+// 별도로 얹는다.
+export interface BudgetChangeMeta {
+  source: "recommendation" | "manual";
+  reasonKind?: "lower_budget" | "raise_budget";
+}
+
 // PATCH 응답에 이미 갱신된 캠페인 전체가 담겨 있으므로, 호출부가 최신 값을 다시 조회할 필요가 없다.
-function patchCampaign(id: string, patch: Partial<Campaign>): Promise<Campaign> {
+function patchCampaign(id: string, patch: Partial<Campaign> & { budgetChangeSource?: string; budgetChangeReasonKind?: string }): Promise<Campaign> {
   return fetchJson<Campaign>(`${API_BASE}/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -45,8 +56,11 @@ export function getDashboardSummarySeed(): DashboardSummary {
   return buildDashboardSummary(CAMPAIGNS);
 }
 
-export function updateBudget(id: string, dailyBudget: number): Promise<Campaign> {
-  return patchCampaign(id, { dailyBudget: Math.max(0, Math.round(dailyBudget)) });
+export function updateBudget(id: string, dailyBudget: number, meta?: BudgetChangeMeta): Promise<Campaign> {
+  return patchCampaign(id, {
+    dailyBudget: Math.max(0, Math.round(dailyBudget)),
+    ...(meta ? { budgetChangeSource: meta.source, ...(meta.reasonKind ? { budgetChangeReasonKind: meta.reasonKind } : {}) } : {}),
+  });
 }
 
 export function setStatus(id: string, status: Campaign["status"]): Promise<Campaign> {
@@ -77,4 +91,8 @@ export function updateIndustry(id: string, industry: Campaign["industry"]): Prom
 
 export function resetToSeed(): Promise<Campaign[]> {
   return fetchJson<Campaign[]>(`${API_BASE}/reset`, { method: "POST" });
+}
+
+export function getBudgetAdjustments(campaignId: string): Promise<{ items: (BudgetAdjustmentRow & { effect: AdjustmentEffect })[] }> {
+  return fetchJson(`${API_BASE}/${campaignId}/budget-adjustments`);
 }

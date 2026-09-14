@@ -21,12 +21,35 @@ CREATE TABLE IF NOT EXISTS Campaign (
   setupStatus TEXT CHECK (setupStatus IN ('draft', 'configured')),
   createRequestId TEXT,
   setupRequestHash TEXT,
+  -- dailyBudget이 바뀐 시각. 방금 조정한 캠페인을 관찰 기간(lib/insights.ts의 BUDGET_COOLDOWN_DAYS)
+  -- 동안 예산 추천 후보에서 빼는 근거로 쓴다 — 없으면 적용 직후 같은 추천이 곧장 다시 뜬다.
+  lastBudgetAdjustmentAt TEXT,
   createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updatedAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_campaign_owner ON Campaign(ownerId);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_campaign_setup_request ON Campaign(ownerId, createRequestId);
+
+-- dailyBudget이 바뀔 때마다(추천 적용/수동 수정 모두) 남기는 이력. baseline*은 변경 "직전" 최근 7일
+-- 실적 스냅샷이라, 이후 실적과 비교해 이 변경이 실제로 도움이 됐는지 나중에 확인할 수 있다.
+CREATE TABLE IF NOT EXISTS BudgetAdjustment (
+  id TEXT PRIMARY KEY,
+  campaignId TEXT NOT NULL,
+  ownerId TEXT NOT NULL,
+  -- recommendation(추천 카드 적용) / manual(캠페인 상세에서 직접 수정).
+  source TEXT NOT NULL CHECK (source IN ('recommendation', 'manual')),
+  -- source가 recommendation일 때만 채워진다 — 어떤 추천을 적용한 결과인지.
+  reasonKind TEXT CHECK (reasonKind IN ('lower_budget', 'raise_budget')),
+  previousBudget INTEGER NOT NULL,
+  newBudget INTEGER NOT NULL,
+  percent REAL,
+  baselineSpend INTEGER NOT NULL,
+  baselineConversions INTEGER NOT NULL,
+  baselineRoas REAL NOT NULL,
+  createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_budget_adjustment_campaign ON BudgetAdjustment(campaignId, createdAt);
 
 -- 연결 확인을 마친 코드만 생성 카드에서 선택할 수 있다. 사이트 스캔만으로 승격하지 않는다.
 CREATE TABLE IF NOT EXISTS TrackingConnection (

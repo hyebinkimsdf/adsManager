@@ -8,6 +8,7 @@ import {
   HiArrowTrendingDown,
   HiArrowTrendingUp,
   HiOutlineUserGroup,
+  HiOutlineClock,
   HiSparkles,
   HiCheck,
   HiChevronRight,
@@ -25,13 +26,17 @@ const TONE: Record<WeeklyRecommendation["tone"], { bg: string; color: string; ic
   warning: { bg: "var(--color-red-50)", color: "var(--color-red-500)", icon: HiArrowTrendingDown },
   positive: { bg: "var(--color-green-50)", color: "var(--color-green-600)", icon: HiArrowTrendingUp },
   info: { bg: "var(--color-violet-50)", color: "var(--color-violet-600)", icon: HiOutlineUserGroup },
+  neutral: { bg: "var(--color-gray-100)", color: "var(--color-gray-500)", icon: HiOutlineClock },
 };
+
+// focus_target/observing은 자동 적용할 변경이 없다 — 확인/이동만 한다.
+const NON_APPLICABLE_KINDS: WeeklyRecommendation["kind"][] = ["focus_target", "observing"];
 
 type ApplyState = "idle" | "pending" | "done" | "error";
 
 async function applyRecommendation(item: WeeklyRecommendation) {
   if (item.kind === "lower_budget" || item.kind === "raise_budget") {
-    await adjustBudgetByPercent(item.campaignId, item.percent);
+    await adjustBudgetByPercent(item.campaignId, item.percent, item.kind);
   }
 }
 
@@ -197,7 +202,7 @@ export function WeeklyRecommendationsCard({ items }: { items: WeeklyRecommendati
                   </p>
                 </div>
 
-                {item.kind === "focus_target" ? (
+                {NON_APPLICABLE_KINDS.includes(item.kind) ? (
                   <Link href={`/campaigns/${item.campaignId}`} css={{ flexShrink: 0 }}>
                     <Button size="md" variant="secondary">
                       {item.buttonLabel}

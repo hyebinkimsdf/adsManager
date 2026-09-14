@@ -34,3 +34,14 @@ export function metricSeries(campaigns: Campaign[], days: number, key: MetricKey
   }
   return dates.map((date) => sums.get(date) ?? 0);
 }
+
+/**
+ * 검증된(live, 날짜 있는) 기록 중 sinceIso 당일을 제외하고 그 이후 ~ (untilIso를 주면 그 날짜 제외)까지만
+ * 추린다. 예산 조정 시점 이후 실제로 새로 쌓인 데이터가 며칠치인지 볼 때 쓴다(관찰 기간 판단, 조정 효과 비교).
+ */
+export function verifiedHistorySince(campaign: Campaign, sinceIso: string, untilIso?: string): DayMetric[] {
+  if (!hasVerifiedMetrics(campaign)) return [];
+  const sinceDate = kstDate(new Date(sinceIso));
+  const untilDate = untilIso ? kstDate(new Date(untilIso)) : null;
+  return campaign.history.filter((day) => day.date! > sinceDate && (!untilDate || day.date! < untilDate));
+}

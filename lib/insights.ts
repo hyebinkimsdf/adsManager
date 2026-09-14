@@ -1,6 +1,7 @@
 import type { Campaign, DayMetric } from "./mock/types";
 import { sumHistory, trendPercent } from "./mock/campaigns";
 import { formatKRW, formatSignedPercent } from "./format";
+import { verifiedHistorySince } from "./campaignMetrics";
 
 export interface Insight {
   id: string;
@@ -124,15 +125,16 @@ export function buildInsights(campaigns: Campaign[]): Insight[] {
 
 export interface WeeklyRecommendation {
   id: string;
-  tone: "warning" | "positive" | "info";
+  tone: "warning" | "positive" | "info" | "neutral";
   title: string;
   detail: string;
   buttonLabel: string;
   impactLabel: string;
   impactValue: string;
   campaignId: string;
-  kind: "lower_budget" | "raise_budget" | "focus_target";
-  /** 적용 버튼을 눌렀을 때 실제로 쓸 조정 비율. lower_budget은 음수, raise_budget은 양수, focus_target은 0(조정 없음, 타겟 화면으로 이동). */
+  /** observing: 예산 추천 후보였지만 최근 조정 직후라 관찰 기간 중 — 실행 버튼 없이 이유만 보여준다. */
+  kind: "lower_budget" | "raise_budget" | "focus_target" | "observing";
+  /** 적용 버튼을 눌렀을 때 실제로 쓸 조정 비율. lower_budget은 음수, raise_budget은 양수, focus_target/observing은 0. */
   percent: number;
 }
 
@@ -141,6 +143,46 @@ function withLast7Totals(campaigns: Campaign[]) {
     .filter((c) => c.status === "active")
     .map((c) => ({ c, totals: sumHistory(c.history.slice(-7)) }))
     .filter((w) => w.totals.spend > 0);
+}
+
+/**
+ * 예산을 방금 조정한 캠페인을 다시 "예산을 줄이세요/늘리세요"로 추천하기까지 기다리는 기간.
+ * history가 매일 하나씩만 갱신되는 구조라 예산을 바꾼 당일에는 어제까지의(=바뀌기 전) 7일 실적이
+ * 그대로 남아있다 — 관찰 기간 없이 곧장 재계산하면 방금 적용한 추천이 똑같이 다시 뜬다.
+ *
+ * metricSource가 live라 실제 날짜 있는 기록이 쌓이는 캠페인은 "며칠 지났는지"가 아니라 "조정 이후
+ * 새 기록이 며칠치 쌓였는지"로 판단한다 — 그래야 트래픽이 적은 캠페인이 시간만 지났다고 성급하게
+ * 재평가되지 않는다. 아직 실데이터가 없는(demo/unverified) 캠페인은 이 기준을 쓸 수 없어 시간 기준으로 판단한다.
+ */
+const BUDGET_COOLDOWN_DAYS = 3;
+const BUDGET_COOLDOWN_MIN_LIVE_DAYS = 3;
+
+export interface BudgetCooldownStatus {
+  cooling: boolean;
+  /** cooling이 true일 때만 채워지는, 사용자에게 보여줄 이유. */
+  message: string;
+}
+
+export function budgetCooldownStatus(campaign: Campaign, now: Date): BudgetCooldownStatus {
+  const notCooling: BudgetCooldownStatus = { cooling: false, message: "" };
+  if (!campaign.lastBudgetAdjustmentAt) return notCooling;
+  const adjustedAt = Date.parse(campaign.lastBudgetAdjustmentAt);
+  if (!Number.isFinite(adjustedAt)) return notCooling;
+
+  if (campaign.metricSource === "live") {
+    const newDays = verifiedHistorySince(campaign, campaign.lastBudgetAdjustmentAt).length;
+    if (newDays >= BUDGET_COOLDOWN_MIN_LIVE_DAYS) return notCooling;
+    return {
+      cooling: true,
+      message: `최근 예산을 조정해서 관찰 중이에요. 새 데이터가 ${
+        BUDGET_COOLDOWN_MIN_LIVE_DAYS - newDays
+      }일 더 쌓이면 다시 확인할게요.`,
+    };
+  }
+  const remainingMs = adjustedAt + BUDGET_COOLDOWN_DAYS * 86_400_000 - now.getTime();
+  if (remainingMs <= 0) return notCooling;
+  const remainingDays = Math.max(1, Math.ceil(remainingMs / 86_400_000));
+  return { cooling: true, message: `최근 예산을 조정해서 관찰 중이에요. ${remainingDays}일 후 다시 확인할게요.` };
 }
 
 function overallConversionRate(withTotals: ReturnType<typeof withLast7Totals>): number {
@@ -187,48 +229,79 @@ export interface DecidedRecommendation {
   detail: string;
 }
 
-function decideWeeklyRecommendations(campaigns: Campaign[]): DecidedRecommendation[] {
+/** 방금 조정해서 관찰 중인 캠페인을 위한 정보성 항목 — 실행 버튼 없이 이유와 재확인 시점만 보여준다. */
+function observingNotice(c: Campaign, message: string): DecidedRecommendation {
+  return {
+    id: `observing-${c.id}`,
+    campaignId: c.id,
+    campaignName: c.name,
+    kind: "observing",
+    tone: "neutral",
+    percent: 0,
+    buttonLabel: "확인하기",
+    impactLabel: "상태",
+    impactValue: "관찰 중",
+    title: `${c.name}은 지금 예산을 그대로 유지해요`,
+    detail: message,
+  };
+}
+
+function decideWeeklyRecommendations(campaigns: Campaign[], now = new Date()): DecidedRecommendation[] {
   const withTotals = withLast7Totals(campaigns);
   const results: DecidedRecommendation[] = [];
+  const used = new Set<string>();
 
+  // 예산을 낮출 후보의 "진짜 최악"을 먼저 찾는다. 쿨다운 중인 캠페인을 건너뛰고 차악을 대신
+  // 추천하지 않는다 — 그러면 "왜 진짜 안 좋은 캠페인 대신 덜 안 좋은 걸 추천하지?"처럼 더 헷갈린다.
+  // 대신 관찰 중이라는 사실 자체를 알려준다(observingNotice).
   const worst = [...withTotals].sort((a, b) => a.totals.roas - b.totals.roas)[0];
   if (worst && worst.totals.roas < 150) {
-    const percent = -20;
-    results.push({
-      id: `low-eff-${worst.c.id}`,
-      campaignId: worst.c.id,
-      campaignName: worst.c.name,
-      kind: "lower_budget",
-      tone: "warning",
-      percent,
-      buttonLabel: "적용하기",
-      impactLabel: "예상 절감 금액",
-      impactValue: estimateSavings(worst.totals.spend, percent),
-      title: `${worst.c.name}의 예산을 줄이는 게 좋아요`,
-      detail: `최근 7일간 ${formatKRW(worst.totals.spend)}원이 사용됐지만, 전환이 ${
-        worst.totals.conversions === 0 ? "없었어요" : "적었어요"
-      }.`,
-    });
+    used.add(worst.c.id);
+    const cooldown = budgetCooldownStatus(worst.c, now);
+    if (cooldown.cooling) {
+      results.push(observingNotice(worst.c, cooldown.message));
+    } else {
+      const percent = -20;
+      results.push({
+        id: `low-eff-${worst.c.id}`,
+        campaignId: worst.c.id,
+        campaignName: worst.c.name,
+        kind: "lower_budget",
+        tone: "warning",
+        percent,
+        buttonLabel: "적용하기",
+        impactLabel: "예상 절감 금액",
+        impactValue: estimateSavings(worst.totals.spend, percent),
+        title: `${worst.c.name}의 예산을 줄이는 게 좋아요`,
+        detail: `최근 7일간 ${formatKRW(worst.totals.spend)}원이 사용됐지만, 전환이 ${
+          worst.totals.conversions === 0 ? "없었어요" : "적었어요"
+        }.`,
+      });
+    }
   }
 
-  const best = [...withTotals]
-    .filter((w) => w.c.id !== worst?.c.id)
-    .sort((a, b) => b.totals.roas - a.totals.roas)[0];
+  const best = [...withTotals].filter((w) => !used.has(w.c.id)).sort((a, b) => b.totals.roas - a.totals.roas)[0];
   if (best && best.totals.roas >= 150) {
-    const percent = 15;
-    results.push({
-      id: `raise-budget-${best.c.id}`,
-      campaignId: best.c.id,
-      campaignName: best.c.name,
-      kind: "raise_budget",
-      tone: "positive",
-      percent,
-      buttonLabel: "적용하기",
-      impactLabel: "예상 추가 전환",
-      impactValue: estimateExtraConversions(best.totals.conversions, percent),
-      title: "성과가 좋은 캠페인의 예산을 늘려보세요",
-      detail: `${best.c.name}의 예산을 15% 늘리면, 더 많은 전환을 기대할 수 있어요.`,
-    });
+    used.add(best.c.id);
+    const cooldown = budgetCooldownStatus(best.c, now);
+    if (cooldown.cooling) {
+      results.push(observingNotice(best.c, cooldown.message));
+    } else {
+      const percent = 15;
+      results.push({
+        id: `raise-budget-${best.c.id}`,
+        campaignId: best.c.id,
+        campaignName: best.c.name,
+        kind: "raise_budget",
+        tone: "positive",
+        percent,
+        buttonLabel: "적용하기",
+        impactLabel: "예상 추가 전환",
+        impactValue: estimateExtraConversions(best.totals.conversions, percent),
+        title: "성과가 좋은 캠페인의 예산을 늘려보세요",
+        detail: `${best.c.name}의 예산을 15% 늘리면, 더 많은 전환을 기대할 수 있어요.`,
+      });
+    }
   }
 
   const topConversion = [...withTotals].sort((a, b) => b.totals.conversions - a.totals.conversions)[0];
@@ -242,11 +315,17 @@ function decideWeeklyRecommendations(campaigns: Campaign[]): DecidedRecommendati
       kind: "focus_target",
       tone: "info",
       percent: 0,
-      buttonLabel: "설정하기",
+      buttonLabel: "확인하기",
       impactLabel: "예상 전환율",
       impactValue: estimateConversionRateDelta(topRate, overallRate),
-      title: `${topConversion.c.targeting.ageRange.replace("-", "~")}세 타겟에 더 집중해보세요`,
-      detail: "이 연령대에서 문의가 가장 많아요.",
+      // 연령대별 실적 데이터가 없어 "이 연령대가 가장 잘 된다"고 단정할 근거가 없다. 실제로 확인된
+      // 것은 이 캠페인 전체의 최근 7일 문의 건수뿐이라 캠페인 단위로만 말하고, 지금 설정된 타겟을
+      // 그대로 "검증된 최적값"처럼 보여주지 않는다.
+      title: `${topConversion.c.name}의 타겟 설정을 점검해보세요`,
+      detail: `최근 7일간 문의 ${topConversion.totals.conversions}건으로 가장 많았어요. 지금 설정된 타겟(${topConversion.c.targeting.ageRange.replace(
+        "-",
+        "~"
+      )}세)이 실제로 반응 좋은 연령대인지는 별도 확인이 필요해요 — 이 캠페인에는 연령대별 성과를 나누어 볼 데이터가 아직 없어요.`,
     });
   }
 
@@ -257,8 +336,8 @@ function decideWeeklyRecommendations(campaigns: Campaign[]): DecidedRecommendati
  * 메인 대시보드 "이번 주 추천 액션" 카드용 — 판단(campaignId/kind/percent)과 설명 문구(title/detail)
  * 모두 규칙 엔진이 결정한다. AI 생성·번역 왕복 없이 항상 즉시, 동일하게 만들어진다.
  */
-export function buildWeeklyRecommendations(campaigns: Campaign[]): WeeklyRecommendation[] {
-  return decideWeeklyRecommendations(campaigns).map((d) => ({
+export function buildWeeklyRecommendations(campaigns: Campaign[], now = new Date()): WeeklyRecommendation[] {
+  return decideWeeklyRecommendations(campaigns, now).map((d) => ({
     id: d.id,
     tone: d.tone,
     title: d.title,
@@ -292,7 +371,7 @@ export function composeWeeklySummary(spendTrendPct: number, conversionsTrendPct:
     return {
       headline: `지난주보다 문의가 ${pct}% 줄었어요.`,
       highlight: `${pct}%`,
-      subtitle: "AI가 찾은 개선 방법을 확인해보세요.",
+      subtitle: "아래에서 확인해 볼 광고 설정을 살펴보세요.",
       badge: "점검이 필요해요",
       healthy: false,
     };
@@ -331,7 +410,7 @@ export function composeWeeklySummary(spendTrendPct: number, conversionsTrendPct:
   return {
     headline: "지난주와 비슷한 성과를 유지하고 있어요.",
     highlight: "",
-    subtitle: "AI가 더 좋은 실행안을 준비했어요.",
+    subtitle: "숫자를 비교해 확인해 볼 설정을 골라뒀어요.",
     badge: "안정적으로 운영되고 있어요",
     healthy: true,
   };
