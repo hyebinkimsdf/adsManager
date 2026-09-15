@@ -8,12 +8,12 @@ import { formatDateRange } from "@/lib/format";
 const GREETING_NAME = "김혜빈";
 
 export function SimpleWeekHeader({
-  healthy,
+  status,
   subtitle,
   rangeStart,
   rangeEnd,
 }: {
-  healthy: boolean;
+  status: "healthy" | "attention" | "observing";
   subtitle: string;
   rangeStart: Date;
   rangeEnd: Date;
@@ -109,13 +109,19 @@ export function SimpleWeekHeader({
             }
           `}
         >
-          {healthy ? (
+          {status === "healthy" && (
             <>
               지난 7일, 광고가 <span css={{ color: "var(--color-blue-600)" }}>잘</span> 운영되고 있어요.
             </>
-          ) : (
+          )}
+          {status === "attention" && (
             <>
               지난 7일, <span css={{ color: "var(--color-blue-600)" }}>점검이 필요해요.</span>
+            </>
+          )}
+          {status === "observing" && (
+            <>
+              지난 7일, <span css={{ color: "var(--color-blue-600)" }}>수정 후 지켜보고 있어요.</span>
             </>
           )}
         </h1>

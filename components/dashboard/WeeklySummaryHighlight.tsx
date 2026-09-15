@@ -71,18 +71,27 @@ function StatBlock({
   );
 }
 
+const BADGE_TONE: Record<"healthy" | "attention" | "observing", { bg: string; color: string }> = {
+  healthy: { bg: "var(--color-green-50)", color: "var(--color-green-600)" },
+  attention: { bg: "var(--color-red-50)", color: "var(--color-red-500)" },
+  observing: { bg: "var(--color-gray-100)", color: "var(--color-gray-600)" },
+};
+
 export function WeeklySummaryHighlight({
   headline,
   highlight,
   badge,
-  healthy,
+  status,
+  detail,
   spend,
   conversions,
 }: {
   headline: string;
   highlight: string;
   badge: string;
-  healthy: boolean;
+  status: "healthy" | "attention" | "observing";
+  /** 배지 아래에 보여줄 구체적인 이유 — 어떤 캠페인이 왜 그런지. 없으면 줄 자체를 생략한다. */
+  detail?: string;
   spend: { current: number; previous: number };
   conversions: { current: number; previous: number };
 }) {
@@ -131,6 +140,11 @@ export function WeeklySummaryHighlight({
               headline
             )}
           </p>
+          {detail && (
+            <p css={{ marginTop: "0.375rem", fontSize: 13, lineHeight: 1.6, color: "var(--color-gray-600)" }}>
+              {detail}
+            </p>
+          )}
         </div>
 
         <div
@@ -182,8 +196,8 @@ export function WeeklySummaryHighlight({
             padding: 0.25rem 0.75rem;
             font-size: 12px;
             font-weight: 600;
-            background-color: ${healthy ? "var(--color-green-50)" : "var(--color-red-50)"};
-            color: ${healthy ? "var(--color-green-600)" : "var(--color-red-500)"};
+            background-color: ${BADGE_TONE[status].bg};
+            color: ${BADGE_TONE[status].color};
             @media (min-width: 1024px) {
               align-self: center;
             }

@@ -17,6 +17,7 @@ export default function NewCampaignPage() {
   function fillFromMessage() {
     if (!message.trim() || setup.saving || setup.confirmationPending) return;
     setNote(setup.startFromMessage(message));
+    setMessage("");
   }
 
   return (
@@ -42,7 +43,7 @@ export default function NewCampaignPage() {
             <textarea
               id="campaign-setup-message"
               value={message}
-              onChange={(event) => setMessage(event.target.value)}
+              onChange={(event) => { setMessage(event.target.value); setNote(null); }}
               disabled={setup.saving || setup.confirmationPending}
               placeholder="예: 카페 홍보, 총 20만원으로 7일 동안"
               rows={3}

@@ -229,14 +229,19 @@ export interface DecidedRecommendation {
   detail: string;
 }
 
-/** 방금 조정해서 관찰 중인 캠페인을 위한 정보성 항목 — 실행 버튼 없이 이유와 재확인 시점만 보여준다. */
-function observingNotice(c: Campaign, message: string): DecidedRecommendation {
+/**
+ * 방금 조정해서 관찰 중인 캠페인을 위한 정보성 항목 — 실행 버튼 없이 이유와 재확인 시점만 보여준다.
+ * tone은 원래 어떤 추천을 대신하는 건지 표시한다 — "점검이 필요해요" 배지가 이미 손 쓴 상태인지
+ * 판단하려면(composeWeeklySummary의 fixApplied) worst 캠페인(경고, warning)이 관찰 중인 건지
+ * best 캠페인(긍정, positive)이 관찰 중인 건지 구분할 수 있어야 하기 때문이다.
+ */
+function observingNotice(c: Campaign, message: string, tone: "warning" | "positive"): DecidedRecommendation {
   return {
     id: `observing-${c.id}`,
     campaignId: c.id,
     campaignName: c.name,
     kind: "observing",
-    tone: "neutral",
+    tone,
     percent: 0,
     buttonLabel: "확인하기",
     impactLabel: "상태",
@@ -259,7 +264,7 @@ function decideWeeklyRecommendations(campaigns: Campaign[], now = new Date()): D
     used.add(worst.c.id);
     const cooldown = budgetCooldownStatus(worst.c, now);
     if (cooldown.cooling) {
-      results.push(observingNotice(worst.c, cooldown.message));
+      results.push(observingNotice(worst.c, cooldown.message, "warning"));
     } else {
       const percent = -20;
       results.push({
@@ -285,7 +290,7 @@ function decideWeeklyRecommendations(campaigns: Campaign[], now = new Date()): D
     used.add(best.c.id);
     const cooldown = budgetCooldownStatus(best.c, now);
     if (cooldown.cooling) {
-      results.push(observingNotice(best.c, cooldown.message));
+      results.push(observingNotice(best.c, cooldown.message, "positive"));
     } else {
       const percent = 15;
       results.push({
@@ -351,29 +356,54 @@ export function buildWeeklyRecommendations(campaigns: Campaign[], now = new Date
   }));
 }
 
+export type WeeklyStatus = "healthy" | "attention" | "observing";
+
 export interface WeeklySummary {
   headline: string;
   highlight: string;
   subtitle: string;
   badge: string;
-  healthy: boolean;
+  status: WeeklyStatus;
 }
 
 const FLAT_THRESHOLD = 5;
 
 /**
- * 메인 대시보드 상단 "이번 주 핵심 요약" 문구 — 광고비/문의 증감 조합을 사람이 읽는 한 문장으로 요약한다.
+ * "이번 주 추천 액션"에 이미 손 쓴(예산 조정 후 관찰 중인) 항목이 있는지 — 있다면 전체 문의가
+ * 아직 -10% 밑이어도 "점검이 필요해요"로 계속 다그치지 않고 "수정 후 관찰중"으로 바꿔 보여준다.
+ * tone이 "warning"인 관찰 항목만 본다 — raise_budget(긍정) 후보의 관찰은 문의 감소와 무관하다.
  */
-export function composeWeeklySummary(spendTrendPct: number, conversionsTrendPct: number): WeeklySummary {
+export function hasAppliedFixPending(recommendations: WeeklyRecommendation[]): boolean {
+  return recommendations.some((r) => r.kind === "observing" && r.tone === "warning");
+}
+
+/**
+ * 메인 대시보드 상단 "이번 주 핵심 요약" 문구 — 광고비/문의 증감 조합을 사람이 읽는 한 문장으로 요약한다.
+ * fixApplied가 true면(hasAppliedFixPending) 문의 감소폭이 여전히 커도 이미 조치했다는 걸 반영한다.
+ */
+export function composeWeeklySummary(
+  spendTrendPct: number,
+  conversionsTrendPct: number,
+  fixApplied = false
+): WeeklySummary {
   const pct = Math.round(Math.abs(conversionsTrendPct));
 
   if (conversionsTrendPct <= -10) {
+    if (fixApplied) {
+      return {
+        headline: `지난주보다 문의가 ${pct}% 줄었지만, 예산은 이미 조정했어요.`,
+        highlight: `${pct}%`,
+        subtitle: "효과가 나타나는 데 며칠 걸릴 수 있어요. 그동안 지켜봐 주세요.",
+        badge: "수정 후 관찰중",
+        status: "observing",
+      };
+    }
     return {
       headline: `지난주보다 문의가 ${pct}% 줄었어요.`,
       highlight: `${pct}%`,
       subtitle: "아래에서 확인해 볼 광고 설정을 살펴보세요.",
       badge: "점검이 필요해요",
-      healthy: false,
+      status: "attention",
     };
   }
 
@@ -383,7 +413,7 @@ export function composeWeeklySummary(spendTrendPct: number, conversionsTrendPct:
       highlight: `${pct}%`,
       subtitle: "같은 광고비로 지난주보다 더 많은 성과를 얻었어요.",
       badge: "좋은 흐름을 이어가고 있어요!",
-      healthy: true,
+      status: "healthy",
     };
   }
 
@@ -393,7 +423,7 @@ export function composeWeeklySummary(spendTrendPct: number, conversionsTrendPct:
       highlight: `${pct}%`,
       subtitle: "효율이 좋아지고 있어요.",
       badge: "좋은 흐름을 이어가고 있어요!",
-      healthy: true,
+      status: "healthy",
     };
   }
 
@@ -403,7 +433,7 @@ export function composeWeeklySummary(spendTrendPct: number, conversionsTrendPct:
       highlight: `${pct}%`,
       subtitle: "투자한 만큼 성과가 따라오고 있어요.",
       badge: "좋은 흐름을 이어가고 있어요!",
-      healthy: true,
+      status: "healthy",
     };
   }
 
@@ -412,7 +442,7 @@ export function composeWeeklySummary(spendTrendPct: number, conversionsTrendPct:
     highlight: "",
     subtitle: "숫자를 비교해 확인해 볼 설정을 골라뒀어요.",
     badge: "안정적으로 운영되고 있어요",
-    healthy: true,
+    status: "healthy",
   };
 }
 

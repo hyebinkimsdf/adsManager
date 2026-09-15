@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { buildWeeklyRecommendations } = require("@/lib/insights");
+const { buildWeeklyRecommendations, hasAppliedFixPending, composeWeeklySummary } = require("@/lib/insights");
 
 const NOW = new Date("2026-09-14T09:00:00.000Z");
 const DAY_MS = 86_400_000;
@@ -111,6 +111,59 @@ test("for a live campaign, the cooldown is judged by days of new dated data, not
   });
   const readyRecs = buildWeeklyRecommendations([enoughNewData], NOW);
   assert.ok(readyRecs.some((r) => r.kind === "lower_budget" && r.campaignId === "camp-1"));
+});
+
+test("an observing notice for the worst campaign carries tone 'warning', so the dashboard badge can tell it apart from a raise_budget cooldown", () => {
+  const c = campaign({
+    history: poorLast7Days(),
+    lastBudgetAdjustmentAt: new Date(NOW.getTime() - 1 * DAY_MS).toISOString(),
+  });
+  const recs = buildWeeklyRecommendations([c], NOW);
+  const observing = recs.find((r) => r.kind === "observing");
+  assert.equal(observing.tone, "warning");
+  assert.equal(hasAppliedFixPending(recs), true);
+});
+
+test("an observing notice for a top (raise_budget) campaign carries tone 'positive', not 'warning'", () => {
+  const c = campaign({
+    history: Array.from({ length: 7 }, (_, i) => ({
+      label: `D-${6 - i}`,
+      spend: 10000,
+      impressions: 1000,
+      clicks: 200,
+      conversions: 20,
+      revenue: 20000, // roas 200% — raise_budget territory, not lower_budget
+    })),
+    lastBudgetAdjustmentAt: NOW.toISOString(),
+  });
+  const recs = buildWeeklyRecommendations([c], NOW);
+  const observing = recs.find((r) => r.kind === "observing");
+  assert.equal(observing.tone, "positive");
+  // 문의 감소와 무관한(오히려 잘 되던 캠페인의) 관찰 항목이라 "이미 조치했다"는 신호로 쓰면 안 된다.
+  assert.equal(hasAppliedFixPending(recs), false);
+});
+
+test("hasAppliedFixPending is false when nothing is cooling", () => {
+  const c = campaign({ history: poorLast7Days() });
+  const recs = buildWeeklyRecommendations([c], NOW);
+  assert.equal(hasAppliedFixPending(recs), false);
+});
+
+test("composeWeeklySummary softens the badge to 'observing' once the fix is already applied", () => {
+  const stillNagging = composeWeeklySummary(-2, -15, false);
+  assert.equal(stillNagging.status, "attention");
+  assert.equal(stillNagging.badge, "점검이 필요해요");
+
+  const alreadyFixed = composeWeeklySummary(-2, -15, true);
+  assert.equal(alreadyFixed.status, "observing");
+  assert.equal(alreadyFixed.badge, "수정 후 관찰중");
+  // 문의가 줄었다는 사실 자체는 숨기지 않는다 — 조치했다는 맥락만 덧붙인다.
+  assert.match(alreadyFixed.headline, /15%/);
+});
+
+test("composeWeeklySummary ignores fixApplied when the trend isn't actually bad", () => {
+  const healthy = composeWeeklySummary(0, 20, true);
+  assert.equal(healthy.status, "healthy");
 });
 
 test("with two struggling campaigns where only the milder one is cooling down, the true worst still gets recommended", () => {

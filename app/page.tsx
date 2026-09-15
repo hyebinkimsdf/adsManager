@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useCampaignsSummaryQuery } from "@/lib/mock/store";
 import { DataState } from "@/components/ui/DataState";
 import { useUiMode } from "@/lib/ui/mode";
-import { composeWeeklySummary } from "@/lib/insights";
+import { composeWeeklySummary, hasAppliedFixPending } from "@/lib/insights";
 import { SummaryCard } from "@/components/dashboard/SummaryCard";
 import { SimpleWeekHeader } from "@/components/dashboard/SimpleWeekHeader";
 import { WeeklySummaryHighlight } from "@/components/dashboard/WeeklySummaryHighlight";
@@ -33,8 +33,9 @@ export default function HomePage() {
   </div>;
 
   if (mode === "simple") {
-    const weekSummary = composeWeeklySummary(summary.trendPct.spend, summary.trendPct.conversions);
     const recommendations = summary.weeklyRecommendations;
+    const fixApplied = hasAppliedFixPending(recommendations);
+    const weekSummary = composeWeeklySummary(summary.trendPct.spend, summary.trendPct.conversions, fixApplied);
 
     const rangeEnd = new Date();
     const rangeStart = new Date(rangeEnd);
@@ -43,13 +44,14 @@ export default function HomePage() {
     return (
       <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
         {dataNotice}
-        <SimpleWeekHeader healthy={weekSummary.healthy} subtitle={weekSummary.subtitle} rangeStart={rangeStart} rangeEnd={rangeEnd} />
+        <SimpleWeekHeader status={weekSummary.status} subtitle={weekSummary.subtitle} rangeStart={rangeStart} rangeEnd={rangeEnd} />
 
         <WeeklySummaryHighlight
           headline={weekSummary.headline}
           highlight={weekSummary.highlight}
           badge={weekSummary.badge}
-          healthy={weekSummary.healthy}
+          status={weekSummary.status}
+          detail={summary.insights[0]?.text}
           spend={{ current: summary.last7.spend, previous: summary.prev7.spend }}
           conversions={{ current: summary.last7.conversions, previous: summary.prev7.conversions }}
         />
