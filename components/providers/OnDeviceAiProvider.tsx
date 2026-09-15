@@ -3,17 +3,16 @@
 import { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { OnDeviceAiRuntime } from "@/lib/ai/onDeviceAiRuntime";
-import { SYSTEM_PROMPT_EN } from "@/lib/ai/systemPrompt";
 import { TRACKING_RULES_SYSTEM_PROMPT_EN } from "@/lib/ai/trackingRulesPrompt";
+import { ON_DEVICE_AI_PROMPTS } from "@/lib/ai/onDeviceAiPrompts";
 
 const AiContext = createContext<OnDeviceAiRuntime | null>(null);
-const PROMPTS = [SYSTEM_PROMPT_EN, TRACKING_RULES_SYSTEM_PROMPT_EN];
 
 export function OnDeviceAiProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // 새 광고 설정은 검증된 기본값과 서버 추천을 사용하며 Nano를 호출하지 않는다.
   const featurePrompt = pathname === "/tracking" ? TRACKING_RULES_SYSTEM_PROMPT_EN : null;
-  const [runtime] = useState(() => new OnDeviceAiRuntime(PROMPTS));
+  const [runtime] = useState(() => new OnDeviceAiRuntime(ON_DEVICE_AI_PROMPTS));
   useEffect(() => {
     void runtime.start();
     return () => runtime.dispose();

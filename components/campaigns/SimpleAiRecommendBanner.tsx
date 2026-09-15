@@ -70,7 +70,7 @@ export function SimpleAiRecommendBanner({ campaigns }: { campaigns: Campaign[] }
           <p css={{ marginTop: "0.125rem", fontSize: 16, fontWeight: 700, color: "var(--color-gray-900)" }}>
             광고 성과를 더 높일 수 있어요!
           </p>
-          <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
+          <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-600)" }}>
             AI가 캠페인을 분석했어요. 아래 버튼을 눌러 개선해보세요.
           </p>
           <div css={{ marginTop: "0.625rem", display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>

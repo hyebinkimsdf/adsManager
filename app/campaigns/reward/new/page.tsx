@@ -153,7 +153,7 @@ export default function NewRewardCampaignPage() {
             gap: 0.25rem;
             margin-bottom: 0.5rem;
             font-size: 13px;
-            color: var(--color-gray-500);
+            color: var(--color-gray-600);
             &:hover {
               color: var(--color-gray-700);
             }
@@ -172,7 +172,7 @@ export default function NewRewardCampaignPage() {
             </span>
           </CardTitle>
         </CardHeader>
-        <p css={{ marginTop: "-0.5rem", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+        <p css={{ marginTop: "-0.5rem", fontSize: 12.5, color: "var(--color-gray-600)" }}>
           지금 운영 중인 캠페인 성과와 전환 데이터를 분석해서 효율적일 것으로 보이는 순서예요.
         </p>
         <div
@@ -233,7 +233,7 @@ export default function NewRewardCampaignPage() {
         {productType && (
           <>
             <div>
-              <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+              <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                 캠페인 이름
               </label>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="캠페인 이름을 입력해주세요" css={inputStyle} />
@@ -242,14 +242,14 @@ export default function NewRewardCampaignPage() {
             {productType === "money_notification" && (
               <>
                 <div>
-                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>유형</label>
+                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>유형</label>
                   <div css={{ display: "flex", gap: "0.5rem" }}>
                     <button type="button" css={pillStyle(variant === "basic")} onClick={() => setVariant("basic")}>일반형</button>
                     <button type="button" css={pillStyle(variant === "live")} onClick={() => setVariant("live")}>라이브형</button>
                   </div>
                 </div>
                 <div>
-                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                     타겟 규모 (최소 {formatKRW(MONEY_NOTIFICATION_MIN_TARGET_SIZE)}명)
                   </label>
                   <input value={targetSize} onChange={(e) => setTargetSize(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" css={inputStyle} />
@@ -263,7 +263,7 @@ export default function NewRewardCampaignPage() {
                   <span css={{ fontSize: 15, fontWeight: 700, color: "var(--color-blue-700)" }}>{computeMoneyNotificationCpp(advancedTargeting)}원</span>
                 </div>
                 <div>
-                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>일 예산</label>
+                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>일 예산</label>
                   <input value={dailyBudget} onChange={(e) => setDailyBudget(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" css={inputStyle} />
                 </div>
               </>
@@ -271,7 +271,7 @@ export default function NewRewardCampaignPage() {
 
             {productType === "lucky_quiz" && (
               <div>
-                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                   전체 예산 ({formatKRW(LUCKY_QUIZ_MIN_BUDGET)}원 ~ {formatKRW(LUCKY_QUIZ_MAX_BUDGET)}원)
                 </label>
                 <input value={totalBudget} onChange={(e) => setTotalBudget(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" css={inputStyle} />
@@ -284,18 +284,18 @@ export default function NewRewardCampaignPage() {
             {productType === "button_press" && (
               <>
                 <div>
-                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>소재 유형</label>
+                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>소재 유형</label>
                   <div css={{ display: "flex", gap: "0.5rem" }}>
                     <button type="button" css={pillStyle(creativeType === "button")} onClick={() => setCreativeType("button")}>버튼강조형</button>
                     <button type="button" css={pillStyle(creativeType === "catalog")} onClick={() => setCreativeType("catalog")}>카탈로그형</button>
                   </div>
                 </div>
                 <div>
-                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>랜딩 URL</label>
+                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>랜딩 URL</label>
                   <input value={landingUrl} onChange={(e) => setLandingUrl(e.target.value)} placeholder="https://" css={inputStyle} />
                 </div>
                 <div>
-                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                  <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                     일 예산 (최소 {formatKRW(BUTTON_PRESS_MIN_DAILY_BUDGET)}원)
                   </label>
                   <input value={dailyBudget} onChange={(e) => setDailyBudget(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" css={inputStyle} />

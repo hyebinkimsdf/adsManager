@@ -14,7 +14,9 @@ export const CardHeader = styled.div`
   justify-content: space-between;
 `;
 
-export const CardTitle = styled.h3`
+// 페이지의 h1(캠페인 이름 등) 바로 아래 단계 — h3로 두면 중간 단계(h2) 없이 건너뛴다는
+// 접근성 감사(heading order)에 걸린다. 이 컴포넌트 아래에 더 깊은 소제목이 없어 h2로 충분하다.
+export const CardTitle = styled.h2`
   font-size: 15px;
   font-weight: 600;
   color: ${({ theme }) => theme.colors.gray[800]};

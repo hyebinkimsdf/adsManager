@@ -147,7 +147,7 @@ export default function CreativesPage() {
     <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div>
         <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>광고 소재 · 기본 점검</h1>
-        <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
+        <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-600)" }}>
           문구와 이미지 크기를 정해진 기준으로 확인해요. 나노 AI나 실제 광고 심사는 아니에요.
         </p>
       </div>
@@ -170,24 +170,24 @@ export default function CreativesPage() {
           </CardHeader>
 
           <div>
-            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>연동 캠페인</label>
+            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>연동 캠페인</label>
             <div css={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
               {targets.map((t) => (
                 <button key={t.id} type="button" css={pillStyle(campaignId === t.id)} onClick={() => setCampaignId(t.id)}>
                   {t.name} <span css={{ opacity: 0.6 }}>· {t.badge}</span>
                 </button>
               ))}
-              {targets.length === 0 && <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>먼저 캠페인을 만들어주세요.</p>}
+              {targets.length === 0 && <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>먼저 캠페인을 만들어주세요.</p>}
             </div>
           </div>
 
           <div>
-            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>헤드라인 카피</label>
+            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>헤드라인 카피</label>
             <input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="예: 지금 가입하면 첫 달 무료" css={inputStyle} />
           </div>
 
           <div>
-            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>본문 카피 (선택)</label>
+            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>본문 카피 (선택)</label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -198,7 +198,7 @@ export default function CreativesPage() {
           </div>
 
           <div>
-            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>이미지 크기 확인 (파일은 저장하지 않아요)</label>
+            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>이미지 크기 확인 (파일은 저장하지 않아요)</label>
             <input
               type="file"
               accept="image/*"
@@ -209,14 +209,14 @@ export default function CreativesPage() {
               css={{ fontSize: 13 }}
             />
             {imageFileName && imageDims && (
-              <p css={{ marginTop: "0.375rem", fontSize: 12, color: "var(--color-gray-500)" }}>
+              <p css={{ marginTop: "0.375rem", fontSize: 12, color: "var(--color-gray-600)" }}>
                 {imageFileName} · {imageDims.width}×{imageDims.height}px
               </p>
             )}
           </div>
 
           <div>
-            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>랜딩 URL</label>
+            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>랜딩 URL</label>
             <input value={landingUrl} onChange={(e) => setLandingUrl(e.target.value)} placeholder="https://" css={inputStyle} />
           </div>
 
@@ -263,7 +263,7 @@ export default function CreativesPage() {
                   <Icon style={{ height: "1.125rem", width: "1.125rem", flexShrink: 0, marginTop: 1, color: STATUS_COLOR[item.status] }} aria-hidden="true" />
                   <div css={{ minWidth: 0 }}>
                     <p css={{ fontSize: 13, fontWeight: 600, color: "var(--color-gray-900)" }}>{item.label}</p>
-                    <p css={{ marginTop: "0.125rem", fontSize: 12.5, lineHeight: 1.5, color: "var(--color-gray-500)" }}>{item.detail}</p>
+                    <p css={{ marginTop: "0.125rem", fontSize: 12.5, lineHeight: 1.5, color: "var(--color-gray-600)" }}>{item.detail}</p>
                   </div>
                 </div>
               );
@@ -296,7 +296,7 @@ export default function CreativesPage() {
               </span>
               <div css={{ minWidth: 0, flex: 1 }}>
                 <p css={{ fontSize: 13.5, fontWeight: 600, color: "var(--color-gray-900)" }}>{c.headline}</p>
-                <p css={{ marginTop: "0.125rem", fontSize: 12, color: "var(--color-gray-500)" }}>
+                <p css={{ marginTop: "0.125rem", fontSize: 12, color: "var(--color-gray-600)" }}>
                   {c.campaignName} · {formatDateTime(c.createdAt)}
                 </p>
               </div>
@@ -325,7 +325,7 @@ export default function CreativesPage() {
             </div>
           ))}
           {creatives.length === 0 && (
-            <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-500)" }}>
+            <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-600)" }}>
               아직 저장한 소재가 없어요.
             </p>
           )}

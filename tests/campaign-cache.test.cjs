@@ -145,6 +145,38 @@ for (const [name, args, changed] of [
   });
 }
 
+test('absolute budget recommendation saves the displayed amount when list and detail budgets differ', async () => {
+  queryClient.setQueryData(store.campaignsQueryKey, [{ ...campaign, dailyBudget: 30000 }]);
+  queryClient.setQueryData(detailKey(campaign.id), { ...campaign, dailyBudget: 40000 });
+  queryClient.setQueryData(store.campaignSummaryQueryKey, repo.getDashboardSummarySeed());
+  const updated = { ...campaign, dailyBudget: 48000 };
+  const requests = [];
+  global.fetch = async (url, init) => {
+    requests.push({ url, method: init?.method, body: JSON.parse(init.body) });
+    return json(updated);
+  };
+
+  await store.applyBudgetRecommendation(campaign.id, 48000, 'raise_budget');
+
+  assert.deepEqual(requests, [{
+    url: `/api/campaigns/${campaign.id}`,
+    method: 'PATCH',
+    body: { dailyBudget: 48000, budgetChangeSource: 'recommendation', budgetChangeReasonKind: 'raise_budget' },
+  }]);
+  assert.deepEqual(queryClient.getQueryData(store.campaignsQueryKey), [updated]);
+  assert.deepEqual(queryClient.getQueryData(detailKey(campaign.id)), updated);
+  assert.equal(queryClient.getQueryState(store.campaignSummaryQueryKey).isInvalidated, true);
+});
+
+test('absolute budget recommendation rejects invalid amounts before sending a request', async () => {
+  let requests = 0;
+  global.fetch = async () => { requests++; return json(campaign); };
+  for (const amount of [999, 10000001, 1000.5, NaN, Infinity]) {
+    await assert.rejects(store.applyBudgetRecommendation(campaign.id, amount, 'lower_budget'), /일 예산은/);
+  }
+  assert.equal(requests, 0);
+});
+
 test('adding without an existing full list never creates a partial list cache', async () => {
   global.fetch = async () => json(serverCampaign);
   await store.addCampaign(serverCampaign);

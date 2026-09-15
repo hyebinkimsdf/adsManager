@@ -1,60 +1,22 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { getDefaultStore, useAtomValue } from "jotai";
+import { atomWithStorage, createJSONStorage, unstable_withStorageValidator as withStorageValidator } from "jotai/utils";
 
 export type UiMode = "simple" | "expert";
 
 const STORAGE_KEY = "ads-dashboard-ui-mode-v1";
-
-let mode: UiMode = "simple";
-let hydrated = false;
-const listeners = new Set<() => void>();
-
-function persist() {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, mode);
-  } catch {
-    // 스토리지 사용 불가 시 조용히 무시 — 화면 동작에는 영향 없음
-  }
-}
-
-function hydrate() {
-  if (hydrated || typeof window === "undefined") return;
-  hydrated = true;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw === "simple" || raw === "expert") mode = raw;
-  } catch {
-    // 손상된 값은 무시하고 기본값 유지
-  }
-  emit();
-}
-
-function emit() {
-  for (const l of listeners) l();
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  hydrate();
-  return () => listeners.delete(listener);
-}
-
-function getSnapshot(): UiMode {
-  return mode;
-}
-
-function getServerSnapshot(): UiMode {
-  return "simple";
-}
+const isUiMode = (value: unknown): value is UiMode => value === "simple" || value === "expert";
+// 손상된 저장값은 무시하고 기본값(simple)으로 되돌린다. atomWithStorage는 기본적으로 마운트 후에만
+// localStorage를 읽어(getOnInit: false) 서버 렌더와 최초 클라이언트 렌더가 항상 "simple"로 일치한다.
+const storage = withStorageValidator(isUiMode)(createJSONStorage<unknown>());
+const modeAtom = atomWithStorage<UiMode>(STORAGE_KEY, "simple", storage);
+const store = getDefaultStore();
 
 export function useUiMode(): UiMode {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  return useAtomValue(modeAtom);
 }
 
 export function setUiMode(next: UiMode) {
-  mode = next;
-  persist();
-  emit();
+  store.set(modeAtom, next);
 }

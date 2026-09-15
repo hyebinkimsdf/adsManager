@@ -91,7 +91,7 @@ export function OptionCard({
         <Icon style={{ height: "1.625rem", width: "1.625rem", color: iconColor }} aria-hidden="true" />
       </span>
       <span css={{ fontSize: 15, fontWeight: 700, color: "var(--color-gray-900)" }}>{label}</span>
-      {desc && <span css={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--color-gray-500)" }}>{desc}</span>}
+      {desc && <span css={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--color-gray-600)" }}>{desc}</span>}
     </button>
   );
 }

@@ -36,7 +36,7 @@ export function SimpleSummaryHeader() {
         >
           AI가 광고를 <span css={{ color: "var(--color-blue-600)" }}>잘 관리</span>하고 있어요!
         </h1>
-        <p css={{ marginTop: "0.375rem", fontSize: 13, color: "var(--color-gray-500)" }}>
+        <p css={{ marginTop: "0.375rem", fontSize: 13, color: "var(--color-gray-600)" }}>
           현재 상태를 한눈에 확인하고, 더 좋은 결과를 만들어보세요.
         </p>
       </div>

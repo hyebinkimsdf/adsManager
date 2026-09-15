@@ -154,12 +154,12 @@ export default function AudiencesPage() {
     <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div>
         <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>타겟</h1>
-        <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
+        <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-600)" }}>
           다시 만나고 싶은 고객의 조건을 저장해요. 광고 매체로 보내는 기능은 아직 연결되지 않았어요.
         </p>
       </div>
 
-      <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>추천은 저장된 조건으로 계산해요. 나노 AI는 사용하지 않아요. 최근 기록 최대 200건 기준이며, 같은 고객의 여러 행동이 포함될 수 있어요. 고객 파일은 이름과 줄 수만 저장해요.</p>
+      <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>추천은 저장된 조건으로 계산해요. 나노 AI는 사용하지 않아요. 최근 기록 최대 200건 기준이며, 같은 고객의 여러 행동이 포함될 수 있어요. 고객 파일은 이름과 줄 수만 저장해요.</p>
       {recommendations.length > 0 && (
         <div css={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           {recommendations.map((rec) => (
@@ -218,7 +218,7 @@ export default function AudiencesPage() {
 
         <div css={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
           <div>
-            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+            <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>
               타겟 이름
             </label>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="예: 구매 이탈 방문자" css={inputStyle} />
@@ -227,7 +227,7 @@ export default function AudiencesPage() {
           {tab === "retargeting" && (
             <>
               <div>
-                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                   대상 캠페인 (최근 3개월 집행 기준)
                 </label>
                 <div css={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
@@ -251,7 +251,7 @@ export default function AudiencesPage() {
                 </div>
               </div>
               <div>
-                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                   행동 기준
                 </label>
                 <div css={{ display: "flex", gap: "0.5rem" }}>
@@ -269,7 +269,7 @@ export default function AudiencesPage() {
           {tab === "conversion" && (
             <>
               <div>
-                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                   전환 이벤트
                 </label>
                 <div css={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
@@ -281,7 +281,7 @@ export default function AudiencesPage() {
                 </div>
               </div>
               <div>
-                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                   수집 기간
                 </label>
                 <div css={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
@@ -293,7 +293,7 @@ export default function AudiencesPage() {
                 </div>
               </div>
               <div>
-                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                   포함 / 제외
                 </label>
                 <div css={{ display: "flex", gap: "0.5rem" }}>
@@ -310,7 +310,7 @@ export default function AudiencesPage() {
 
           {tab === "customer_list" && (
             <div>
-              <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+              <label css={{ marginBottom: "0.375rem", display: "block", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                 고객 목록 CSV 업로드
               </label>
               <input
@@ -323,7 +323,7 @@ export default function AudiencesPage() {
                 css={{ fontSize: 13 }}
               />
               {fileName && (
-                <p css={{ marginTop: "0.5rem", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                <p css={{ marginTop: "0.5rem", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                   {fileName} · {formatKRW(rowCount)}행 인식됨 (첫 줄은 헤더로 처리)
                 </p>
               )}
@@ -399,7 +399,7 @@ export default function AudiencesPage() {
             </div>
           ))}
           {audiences.length === 0 && (
-            <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-500)" }}>
+            <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-600)" }}>
               아직 저장된 타겟이 없어요.
             </p>
           )}

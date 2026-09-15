@@ -17,7 +17,7 @@ function FunnelBar({ label, value, max, sublabel }: { label: string; value: numb
     <div css={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
       <div css={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
         <span css={{ fontSize: 13, fontWeight: 600, color: "var(--color-gray-700)" }}>{label}</span>
-        <span css={{ fontSize: 13, color: "var(--color-gray-500)" }}>
+        <span css={{ fontSize: 13, color: "var(--color-gray-600)" }}>
           {formatKRW(value)}
           {sublabel && <span css={{ marginLeft: "0.375rem", color: "var(--color-gray-400)" }}>{sublabel}</span>}
         </span>
@@ -95,7 +95,7 @@ export default function MeasurementPage() {
     <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div>
         <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>방문·구매 기록</h1>
-        <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
+        <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-600)" }}>
           최근 기록 최대 200건에서 실제 방문·구매만 보여줘요. 전체 기간의 합계는 아니에요.
         </p>
       </div>
@@ -129,23 +129,23 @@ export default function MeasurementPage() {
         `}
       >
         <Card>
-          <p css={{ marginBottom: "0.5rem", fontSize: 13, color: "var(--color-gray-500)" }}>사이트 방문</p>
+          <p css={{ marginBottom: "0.5rem", fontSize: 13, color: "var(--color-gray-600)" }}>사이트 방문</p>
           <p css={{ fontSize: 22, fontWeight: 700, color: "var(--color-gray-900)" }}>{formatKRW(visits)}건</p>
         </Card>
         <Card>
-          <p css={{ marginBottom: "0.5rem", fontSize: 13, color: "var(--color-gray-500)" }}>문의 수집</p>
+          <p css={{ marginBottom: "0.5rem", fontSize: 13, color: "var(--color-gray-600)" }}>문의 수집</p>
           <p css={{ fontSize: 22, fontWeight: 700, color: "var(--color-gray-900)" }}>{formatKRW(leads.length)}건</p>
         </Card>
         <Card>
-          <p css={{ marginBottom: "0.5rem", fontSize: 13, color: "var(--color-gray-500)" }}>구매</p>
+          <p css={{ marginBottom: "0.5rem", fontSize: 13, color: "var(--color-gray-600)" }}>구매</p>
           <p css={{ fontSize: 22, fontWeight: 700, color: "var(--color-gray-900)" }}>{formatKRW(purchaseCount)}건</p>
         </Card>
         <Card>
-          <p css={{ marginBottom: "0.5rem", fontSize: 13, color: "var(--color-gray-500)" }}>구매 전환 금액</p>
+          <p css={{ marginBottom: "0.5rem", fontSize: 13, color: "var(--color-gray-600)" }}>구매 전환 금액</p>
           <p css={{ fontSize: 22, fontWeight: 700, color: "var(--color-gray-900)" }}>{formatCompactKRW(purchaseValue)}원</p>
         </Card>
         <Card>
-          <p css={{ marginBottom: "0.5rem", fontSize: 13, color: "var(--color-gray-500)" }}>평균 구매 금액</p>
+          <p css={{ marginBottom: "0.5rem", fontSize: 13, color: "var(--color-gray-600)" }}>평균 구매 금액</p>
           <p css={{ fontSize: 22, fontWeight: 700, color: "var(--color-gray-900)" }}>{formatCompactKRW(avgOrderValue)}원</p>
         </Card>
       </div>
@@ -208,7 +208,7 @@ export default function MeasurementPage() {
               </Link>
               <Badge tone="gray">방문 {formatKRW(row.visits)}</Badge>
               <Badge tone="blue">구매 {formatKRW(row.purchases)}</Badge>
-              <span css={{ flexShrink: 0, fontSize: 12.5, color: "var(--color-gray-500)" }}>
+              <span css={{ flexShrink: 0, fontSize: 12.5, color: "var(--color-gray-600)" }}>
                 전환율 {formatPercent(row.rate, 1)}
               </span>
               <span css={{ flexShrink: 0, fontSize: 13, fontWeight: 700, color: "var(--color-gray-800)" }}>
@@ -217,7 +217,7 @@ export default function MeasurementPage() {
             </div>
           ))}
           {perCampaign.length === 0 && (
-            <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-500)" }}>
+            <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-600)" }}>
               아직 캠페인이 없어요.
             </p>
           )}
@@ -244,11 +244,11 @@ export default function MeasurementPage() {
               <span css={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600, color: "var(--color-gray-900)" }}>
                 {campaignNameById.get(lead.campaignId) ?? lead.campaignId}
               </span>
-              <span css={{ fontSize: 12.5, color: "var(--color-gray-500)" }}>{formatDateTime(lead.occurredAt)}</span>
+              <span css={{ fontSize: 12.5, color: "var(--color-gray-600)" }}>{formatDateTime(lead.occurredAt)}</span>
             </div>
           ))}
           {leads.length === 0 && (
-            <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-500)" }}>
+            <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-600)" }}>
               아직 수집된 문의가 없어요.
             </p>
           )}

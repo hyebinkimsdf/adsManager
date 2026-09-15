@@ -10,6 +10,7 @@ import { useCampaign, useBudgetAdjustmentsQuery } from "@/lib/mock/store";
 import { updateBudget, setStatus, updateIndustry, deleteCampaign } from "@/lib/mock/store";
 import { sumHistory, OBJECTIVE_LABEL, INDUSTRY_LABEL } from "@/lib/mock/campaigns";
 import { isValidDailyBudget, MIN_DAILY_BUDGET, MAX_DAILY_BUDGET } from "@/lib/campaigns/validate";
+import { explainSpend, explainRoas, explainCtr, explainCpa } from "@/lib/campaigns/metricExplanations";
 import { formatCompactKRW, formatKRW, formatPercent, formatSignedPercent, formatDateTime } from "@/lib/format";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -17,7 +18,7 @@ import { Toggle } from "@/components/ui/Toggle";
 import { Button } from "@/components/ui/Button";
 import { SummaryCard } from "@/components/dashboard/SummaryCard";
 import { LineChart } from "@/components/dashboard/LineChart";
-import { openAssistantDock } from "@/lib/ui/assistantDock";
+import { BudgetRecommendationPanel } from "@/components/campaigns/BudgetRecommendationPanel";
 import { campaignStateLabel } from "@/lib/campaigns/list";
 import type { CampaignIndustry } from "@/lib/mock/types";
 
@@ -31,7 +32,7 @@ const REASON_LABEL: Record<"lower_budget" | "raise_budget", string> = {
 const VERDICT_COLOR: Record<"improved" | "worsened" | "flat", string> = {
   improved: "var(--color-green-600)",
   worsened: "var(--color-red-600)",
-  flat: "var(--color-gray-500)",
+  flat: "var(--color-gray-600)",
 };
 
 /** 예산을 바꿀 때마다(추천 적용/직접 수정) 남긴 기록과, 실데이터로 확인된 효과를 함께 보여준다. */
@@ -47,7 +48,7 @@ function BudgetAdjustmentHistory({ campaignId }: { campaignId: string }) {
       <CardHeader>
         <CardTitle>예산 변경 이력</CardTitle>
       </CardHeader>
-      {isPending && <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>불러오는 중...</p>}
+      {isPending && <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>불러오는 중...</p>}
       {isError && (
         <div css={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <p css={{ fontSize: 13, color: "var(--color-red-600)" }}>변경 이력을 불러오지 못했어요.</p>
@@ -81,20 +82,20 @@ function BudgetAdjustmentHistory({ campaignId }: { campaignId: string }) {
                 <p css={{ fontSize: 13.5, fontWeight: 600, color: "var(--color-gray-900)" }}>
                   {formatKRW(item.previousBudget)}원 → {formatKRW(item.newBudget)}원
                   {item.percent != null && (
-                    <span css={{ marginLeft: "0.375rem", fontWeight: 500, color: "var(--color-gray-500)" }}>
+                    <span css={{ marginLeft: "0.375rem", fontWeight: 500, color: "var(--color-gray-600)" }}>
                       ({formatSignedPercent(item.percent, 0)})
                     </span>
                   )}
                 </p>
                 <span css={{ flexShrink: 0, fontSize: 12, color: "var(--color-gray-400)" }}>{formatDateTime(item.createdAt)}</span>
               </div>
-              <p css={{ fontSize: 12.5, color: "var(--color-gray-500)" }}>
+              <p css={{ fontSize: 12.5, color: "var(--color-gray-600)" }}>
                 {item.source === "recommendation" && item.reasonKind ? REASON_LABEL[item.reasonKind] : "캠페인 상세에서 직접 수정"}
               </p>
               <p
                 css={{
                   fontSize: 12.5,
-                  color: item.effect.verdict ? VERDICT_COLOR[item.effect.verdict] : "var(--color-gray-500)",
+                  color: item.effect.verdict ? VERDICT_COLOR[item.effect.verdict] : "var(--color-gray-600)",
                 }}
               >
                 {item.effect.message}
@@ -114,6 +115,7 @@ export default function CampaignDetailPage() {
   const [budgetInput, setBudgetInput] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [budgetPanelOpen, setBudgetPanelOpen] = useState(false);
 
   if (!campaign) {
     return (
@@ -135,6 +137,10 @@ export default function CampaignDetailPage() {
   }
 
   const totals = sumHistory(campaign.history);
+  const spendExplanation = explainSpend();
+  const roasExplanation = explainRoas(totals.roas, totals.spend);
+  const ctrExplanation = explainCtr(totals.ctr, totals.impressions);
+  const cpaExplanation = explainCpa(totals.cpa, totals.conversions, roasExplanation.tone);
   const editingValue = budgetInput ?? String(campaign.dailyBudget);
   const parsedBudget = Number(editingValue.replace(/[^0-9]/g, ""));
   const budgetError =
@@ -177,7 +183,7 @@ export default function CampaignDetailPage() {
           href="/campaigns"
           css={css`
             font-size: 13px;
-            color: var(--color-gray-500);
+            color: var(--color-gray-600);
             &:hover {
               color: var(--color-gray-700);
             }
@@ -210,10 +216,10 @@ export default function CampaignDetailPage() {
           }
         `}
       >
-        <SummaryCard label="총 지출" value={formatCompactKRW(totals.spend)} unit="원" />
-        <SummaryCard label="ROAS" value={formatPercent(totals.roas, 0)} />
-        <SummaryCard label="CTR" value={formatPercent(totals.ctr, 2)} />
-        <SummaryCard label="CPA" value={formatCompactKRW(totals.cpa)} unit="원" />
+        <SummaryCard label="총 지출" value={formatCompactKRW(totals.spend)} unit="원" caption={spendExplanation.caption} tone={spendExplanation.tone} />
+        <SummaryCard label="ROAS" value={formatPercent(totals.roas, 0)} caption={roasExplanation.caption} tone={roasExplanation.tone} />
+        <SummaryCard label="CTR" value={formatPercent(totals.ctr, 2)} caption={ctrExplanation.caption} tone={ctrExplanation.tone} />
+        <SummaryCard label="CPA" value={formatCompactKRW(totals.cpa)} unit="원" caption={cpaExplanation.caption} tone={cpaExplanation.tone} />
       </div>
 
       <Card>
@@ -228,7 +234,7 @@ export default function CampaignDetailPage() {
             showAxis
           />
         ) : (
-          <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-500)" }}>
+          <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-600)" }}>
             아직 집계된 데이터가 없어요. 캠페인이 시작되면 하루 뒤부터 확인할 수 있어요.
           </p>
         )}
@@ -242,7 +248,7 @@ export default function CampaignDetailPage() {
           <div css={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span css={{ fontSize: 13, color: "var(--color-gray-600)" }}>캠페인 활성화</span>
             {campaign.setupStatus ? (
-              <span css={{ fontSize: 12.5, color: "var(--color-gray-500)" }}>
+              <span css={{ fontSize: 12.5, color: "var(--color-gray-600)" }}>
                 {campaign.setupStatus === "draft" ? "초안이라 아직 시작할 수 없어요" : "광고 시작 기능은 아직 준비 중이에요"}
               </span>
             ) : (
@@ -262,11 +268,11 @@ export default function CampaignDetailPage() {
                 {campaign.totalBudget != null ? `총 ${formatKRW(campaign.totalBudget)}원` : `하루 ${formatKRW(campaign.dailyBudget)}원`}
               </p>
               {campaign.startDate && (
-                <p css={{ marginTop: "0.125rem", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                <p css={{ marginTop: "0.125rem", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                   {campaign.startDate} ~ {campaign.endDate ?? "종료일 없음"}
                 </p>
               )}
-              <p css={{ marginTop: "0.375rem", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+              <p css={{ marginTop: "0.375rem", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                 예산·기간 변경은 아직 여기서 지원하지 않아요.
               </p>
             </div>
@@ -291,6 +297,7 @@ export default function CampaignDetailPage() {
                     value={editingValue}
                     onChange={(e) => handleBudgetInputChange(e.target.value)}
                     inputMode="numeric"
+                    aria-label="일 예산"
                     aria-invalid={budgetInput !== null && !!budgetError}
                     css={css`
                       width: 100%;
@@ -301,7 +308,7 @@ export default function CampaignDetailPage() {
                       outline: none;
                     `}
                   />
-                  <span css={{ fontSize: 13, color: "var(--color-gray-500)" }}>원</span>
+                  <span css={{ fontSize: 13, color: "var(--color-gray-600)" }}>원</span>
                 </div>
                 <Button size="md" variant="secondary" onClick={saveBudget} disabled={saveState === "saving" || !!budgetError}>
                   {saveState === "saving" ? "저장 중…" : "저장"}
@@ -360,7 +367,7 @@ export default function CampaignDetailPage() {
 
               <button
                 type="button"
-                onClick={() => openAssistantDock(campaign.id)}
+                onClick={() => setBudgetPanelOpen(true)}
                 css={css`
                   margin-top: 0.625rem;
                   display: inline-flex;
@@ -448,12 +455,14 @@ export default function CampaignDetailPage() {
           <CardTitle>위험 구역</CardTitle>
         </CardHeader>
         <div css={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
-          <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>캠페인을 삭제하면 되돌릴 수 없어요.</p>
+          <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>캠페인을 삭제하면 되돌릴 수 없어요.</p>
           <Button size="md" variant="danger" onClick={handleDelete}>
             캠페인 삭제
           </Button>
         </div>
       </Card>
+
+      <BudgetRecommendationPanel campaign={campaign} open={budgetPanelOpen} onClose={() => setBudgetPanelOpen(false)} />
     </div>
   );
 }

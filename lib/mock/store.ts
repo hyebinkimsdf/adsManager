@@ -6,6 +6,8 @@ import * as repo from "./campaignsRepository";
 import type { Campaign } from "./types";
 import { buildDashboardSummary, type DashboardSummary } from "@/lib/insights";
 import { replaceLast7Days, type TestPerformanceInput } from "@/lib/dev/testPerformanceData";
+import { isValidDailyBudget, MIN_DAILY_BUDGET, MAX_DAILY_BUDGET } from "@/lib/campaigns/validate";
+import { formatKRW } from "@/lib/format";
 
 export const campaignsQueryKey = ["campaigns"] as const;
 export const campaignSummaryQueryKey = ["campaigns", "summary"] as const;
@@ -141,6 +143,13 @@ export function updateBudget(id: string, dailyBudget: number) {
   return applyUpdate(() => repo.updateBudget(id, dailyBudget, { source: "manual" }));
 }
 
+export function applyBudgetRecommendation(id: string, dailyBudget: number, reasonKind: "lower_budget" | "raise_budget") {
+  if (!isValidDailyBudget(dailyBudget)) {
+    return Promise.reject(new Error(`일 예산은 ${formatKRW(MIN_DAILY_BUDGET)}원~${formatKRW(MAX_DAILY_BUDGET)}원 사이의 정수여야 해요.`));
+  }
+  return applyUpdate(() => repo.updateBudget(id, dailyBudget, { source: "recommendation", reasonKind }));
+}
+
 export function adjustBudgetByPercent(id: string, percent: number, reasonKind?: "lower_budget" | "raise_budget") {
   const current = getCachedCampaign(id);
   if (!current) return Promise.reject(new Error("캠페인 정보를 불러오지 못했어요. 목록을 새로고침한 뒤 다시 시도해 주세요."));
@@ -156,6 +165,10 @@ export function updateTargeting(id: string, targeting: Partial<Campaign["targeti
   const current = getCachedCampaign(id);
   if (!current) return Promise.reject(new Error("캠페인 정보를 불러오지 못했어요. 목록을 새로고침한 뒤 다시 시도해 주세요."));
   return applyUpdate(() => repo.updateTargeting(id, { ...current.targeting, ...targeting }));
+}
+
+export function updatePublishDates(id: string, startDate: string, endDate: string | null) {
+  return applyUpdate(() => repo.updatePublishDates(id, startDate, endDate));
 }
 
 export async function addCampaign(campaign: Campaign) {

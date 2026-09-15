@@ -11,7 +11,7 @@ export function DataState({ title, error = false, onRetry }: { title: string; er
       <Icon size={22} aria-hidden="true" />
       <div css={{ flex: 1, minWidth: 160 }}>
         <p css={{ fontWeight: 600 }}>{title}</p>
-        {error && <p css={{ marginTop: 4, fontSize: 13, color: "var(--color-gray-500)" }}>연결을 확인한 뒤 다시 눌러주세요. 예시 데이터로 대신 보여주지 않아요.</p>}
+        {error && <p css={{ marginTop: 4, fontSize: 13, color: "var(--color-gray-600)" }}>연결을 확인한 뒤 다시 눌러주세요. 예시 데이터로 대신 보여주지 않아요.</p>}
       </div>
       {error && onRetry && <Button variant="secondary" size="sm" onClick={onRetry}>다시 불러오기</Button>}
     </section>

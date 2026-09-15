@@ -22,10 +22,12 @@ export const theme = {
     red: {
       50: "var(--color-red-50)",
       500: "var(--color-red-500)",
+      600: "var(--color-red-600)",
     },
     green: {
       50: "var(--color-green-50)",
       600: "var(--color-green-600)",
+      700: "var(--color-green-700)",
     },
     yellow: {
       50: "var(--color-yellow-50)",

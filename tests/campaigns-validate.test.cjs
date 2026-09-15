@@ -84,6 +84,28 @@ test("validateCampaignPatch rejects an empty object body with no error on absent
   assert.deepEqual(result.value, {});
 });
 
+test("validateCampaignPatch accepts a valid startDate/endDate pair", () => {
+  const result = validateCampaignPatch({ startDate: "2026-01-01", endDate: "2026-01-31" });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value, { startDate: "2026-01-01", endDate: "2026-01-31" });
+});
+
+test("validateCampaignPatch accepts a null endDate", () => {
+  const result = validateCampaignPatch({ startDate: "2026-01-01", endDate: null });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value, { startDate: "2026-01-01", endDate: null });
+});
+
+test("validateCampaignPatch rejects a malformed startDate", () => {
+  const result = validateCampaignPatch({ startDate: "2026/01/01" });
+  assert.equal(result.ok, false);
+});
+
+test("validateCampaignPatch rejects an endDate before startDate", () => {
+  const result = validateCampaignPatch({ startDate: "2026-01-31", endDate: "2026-01-01" });
+  assert.equal(result.ok, false);
+});
+
 test("validateTargeting rejects a gender value outside the enum", () => {
   const result = validateTargeting({ ...validTargeting, gender: "other" });
   assert.equal(result.ok, false);

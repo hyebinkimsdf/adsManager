@@ -58,6 +58,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (patch.dailyBudget !== undefined) columns.dailyBudget = patch.dailyBudget;
   if (patch.targeting !== undefined) columns.targeting = JSON.stringify(patch.targeting);
   if (patch.history !== undefined) columns.history = JSON.stringify(patch.history);
+  if (patch.startDate !== undefined) columns.startDate = patch.startDate;
+  if (patch.endDate !== undefined) columns.endDate = patch.endDate;
 
   const fields = Object.keys(columns);
   if (fields.length === 0) {
@@ -85,7 +87,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       `UPDATE Campaign SET ${setClause}, updatedAt = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')${
         budgetChanged ? ", lastBudgetAdjustmentAt = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')" : ""
       } WHERE id = ? AND ownerId = ?`,
-      [...fields.map((f) => columns[f] as string | number), id, MY_OWNER_ID]
+      [...fields.map((f) => columns[f] as string | number | null), id, MY_OWNER_ID]
     );
     const rows = await d1Query<CampaignRow>("SELECT * FROM Campaign WHERE id = ? AND ownerId = ?", [id, MY_OWNER_ID]);
     if (rows.length === 0) {

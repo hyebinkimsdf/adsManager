@@ -107,7 +107,7 @@ const inputStyle = css`
 
 const helperStyle = css`
   margin: 0;
-  color: var(--color-gray-500);
+  color: var(--color-gray-600);
   font-size: 12px;
   line-height: 1.65;
   overflow-wrap: anywhere;
@@ -223,7 +223,7 @@ export function CampaignSetupCard({ draft, onChange, options, loading, saving, c
             <FieldLabel htmlFor={`${id}-budget`} icon={<HiOutlineBanknotes aria-hidden="true" />}>총 예산</FieldLabel>
             <div css={css`position: relative;`}>
               <input id={`${id}-budget`} type="number" min={100000} step={100} required value={Number.isFinite(draft.totalBudget) && draft.totalBudget !== 0 ? draft.totalBudget : ""} onChange={(event) => onChange({ ...draft, totalBudget: Number(event.target.value) })} aria-invalid={!validBudget} aria-describedby={`${id}-budget-help`} css={[inputStyle, css`font-size: 23px; font-weight: 700; background: var(--color-surface, white); padding-right: 38px;`]} />
-              <span aria-hidden="true" css={css`position: absolute; top: 16px; right: 16px; color: var(--color-gray-500); font-size: 14px;`}>원</span>
+              <span aria-hidden="true" css={css`position: absolute; top: 16px; right: 16px; color: var(--color-gray-600); font-size: 14px;`}>원</span>
             </div>
             <p id={`${id}-budget-help`} css={helperStyle}>광고 기간 전체에 쓸 한도예요.<br />10만원 이상, 100원씩 입력해 주세요.</p>
             {loading ? <p role="status" css={helperStyle}>설정에 필요한 정보를 확인하고 있어요.</p> : recommendation?.totalBudget != null ? (

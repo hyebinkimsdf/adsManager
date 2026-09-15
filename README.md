@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# adsManager
 
-## Getting Started
+광고주가 캠페인을 만들고 운영하는 걸 도와주는 광고 관리 대시보드다. 일반 디스플레이 캠페인뿐 아니라 머니알림, 행운퀴즈, 버튼 누르기 같은 리워드형 광고도 같은 곳에서 관리할 수 있게 만들었다.
 
-First, run the development server:
+## 뭘 할 수 있나
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+캠페인은 두 갈래로 나뉜다. 하나는 목적(구매, 앱설치, 리드, 방문)과 업종, 예산, 타겟을 직접 정해서 만드는 일반 캠페인이고, 다른 하나는 머니알림·행운퀴즈·버튼 누르기 세 가지 중에서 고르는 리워드 캠페인이다. 리워드 쪽은 지금 운영 중인 캠페인 성과와 전환 데이터를 보고 어떤 상품이 맞을지 점수를 매겨 추천해준다.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+캠페인을 새로 만들 때는 목표를 문장으로 설명하면 초안을 만들어주는 기능이 있다. 그 초안을 그대로 써도 되고, 타겟팅까지 더 다듬고 싶으면 마법사 화면으로 이어서 진행할 수도 있다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+우측 하단에는 채팅 형태의 어시스턴트가 붙어 있다. 캠페인 성과를 물어보거나 예산 조정, 캠페인 일시정지 같은 걸 요청할 수 있는데, 실제로 값이 바뀌는 건 없다 — 항상 제안만 하고, 사용자가 직접 눌러서 적용해야 반영된다. 예산을 한 번에 크게 올리거나 내리는 제안도 하지 않는다.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+전환 추적 설정도 있다. 사이트에서 폼이나 버튼, 링크를 긁어와서 어떤 게 실제 전환 행동인지 판단하고 추적 규칙을 자동으로 제안해준다.
 
-## Learn More
+## AI는 어떻게 돌아가나
 
-To learn more about Next.js, take a look at the following resources:
+여기서 쓰는 AI는 서버에 요청을 보내는 방식이 아니라 크롬 브라우저에 내장된 온디바이스 모델을 그대로 쓴다. 그래서 서버 비용이 들지 않고, 데이터가 밖으로 나가지 않는다. 다만 이 모델이 아직 한국어를 직접 다루지 못해서, 메시지를 영어로 번역해 모델에 보내고 나온 답을 다시 한국어로 번역해 보여주는 식으로 우회하고 있다.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+이 방식의 특성상 크롬이 아닌 브라우저에서는 온디바이스 AI를 쓸 수 없다. 그런 경우엔 규칙 기반으로 만든 대체 답변을 대신 보여준다. 어느 쪽으로 답했는지는 화면에서도 구분해서 표시된다.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 지금 없는 것들
 
-## Deploy on Vercel
+로그인 기능이 아직 없다. 지금은 계정 하나만 있다고 가정하고 모든 데이터를 그 계정 기준으로 다루고 있어서, 실제 서비스로 쓰려면 이 부분부터 채워야 한다.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+실제 광고 매체와도 연동돼 있지 않다. 그래서 캠페인 성과 수치는 저절로 쌓이는 게 아니라, 테스트용으로 값을 직접 넣어보면서 예산 추천 같은 로직이 데이터에 잘 반응하는지 확인하는 식으로 개발하고 있다.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 어떻게 만들어졌나
+
+Next.js로 만든 웹 앱이고, 데이터는 Cloudflare의 D1 데이터베이스에 저장한다. 캠페인 목록이나 리워드 캠페인처럼 화면에 자주 뜨는 데이터는 다시 불러오지 않도록 캐싱해서 쓰고 있다.

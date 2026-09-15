@@ -8,6 +8,9 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: Tone;
 }
 
+// 배지 배경(각 색의 50/100 단계)은 아주 밝아서, 글자색은 각 색상의 가장 옅은 단계가 아니라
+// 명암비 4.5:1을 실제로 채우는 진한 단계를 골라야 한다. gray-600·green-600·red-500은 이 배경들
+// 위에서 각각 약 4.2:1·2.7:1·3.3:1로 기준에 못 미쳐 한 단계씩 더 진한 색을 쓴다.
 const toneStyle = (theme: Theme, tone: Tone) =>
   ({
     blue: css`
@@ -16,15 +19,15 @@ const toneStyle = (theme: Theme, tone: Tone) =>
     `,
     gray: css`
       background-color: ${theme.colors.gray[100]};
-      color: ${theme.colors.gray[600]};
+      color: ${theme.colors.gray[700]};
     `,
     green: css`
       background-color: ${theme.colors.green[50]};
-      color: ${theme.colors.green[600]};
+      color: ${theme.colors.green[700]};
     `,
     red: css`
       background-color: ${theme.colors.red[50]};
-      color: ${theme.colors.red[500]};
+      color: ${theme.colors.red[600]};
     `,
   })[tone];
 

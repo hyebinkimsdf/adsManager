@@ -2,6 +2,9 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { OnDeviceAiRuntime } = require("@/lib/ai/onDeviceAiRuntime");
 const { runOnDeviceRequest } = require("@/lib/ai/onDeviceAiRequest");
+const { ON_DEVICE_AI_PROMPTS } = require("@/lib/ai/onDeviceAiPrompts");
+const { BUDGET_RECOMMENDATION_SYSTEM_PROMPT_EN, buildBudgetRecommendationUserTurnEn } = require("@/lib/ai/budgetRecommendationPrompt");
+const { BUDGET_RECOMMENDATION_RESPONSE_SCHEMA_EN, isBudgetRecommendationReply } = require("@/lib/ai/budgetRecommendationSchema");
 
 const prompts = ["chat system prompt", "campaign system prompt"];
 const tick = () => new Promise((resolve) => setImmediate(resolve));
@@ -646,6 +649,47 @@ function requestConfig(overrides = {}) {
     ...overrides,
   };
 }
+
+test("provider prompt catalog runs budget explanations on device without warming unrelated features", async (t) => {
+  const inputs = [];
+  const { runtime, calls } = setup(t, {
+    systemPrompts: ON_DEVICE_AI_PROMPTS,
+    create: async (call) => {
+      call.value.prompt = async (input) => {
+        inputs.push(input);
+        return JSON.stringify({ reasoning: "Keep the budget near comparable campaigns." });
+      };
+      call.value.translate = async () => "비슷한 캠페인을 참고한 예산이에요.";
+      return call.value;
+    },
+  });
+  await runtime.start();
+  const budgetPrompt = BUDGET_RECOMMENDATION_SYSTEM_PROMPT_EN;
+  assert.equal(runtime.getSession(budgetPrompt), null);
+  assert.equal(runtime.getFeatureStatus(budgetPrompt).state, "idle");
+  assert.equal(runtime.getFeatureStatus(budgetPrompt).label, "예산 추천 AI");
+  const facts = {
+    campaignId: "budget-test", objective: "purchase", industry: "food", currentBudget: 40000,
+    ownRoas: 200, range: { min: 1000, max: 65000 }, comparableCount: 1,
+    comparableAvgRoas: 250, comparableAvgBudget: 48000, recommendedBudget: 48000, direction: "up",
+  };
+  const result = await runOnDeviceRequest(runtime, requestConfig({
+    systemPromptEn: budgetPrompt,
+    responseSchemaEn: BUDGET_RECOMMENDATION_RESPONSE_SCHEMA_EN,
+    buildUserTurnEn: buildBudgetRecommendationUserTurnEn,
+    parseResponse: (raw) => {
+      const parsed = JSON.parse(raw);
+      return isBudgetRecommendationReply(parsed) ? parsed : null;
+    },
+    translateResponse: async (reply, translators) => ({ reasoning: await translators.toKo.translate(reply.reasoning) }),
+  }), facts, new AbortController());
+  assert.deepEqual(result, { reasoning: "비슷한 캠페인을 참고한 예산이에요." });
+  assert.equal(inputs.length, 1);
+  assert.match(inputs[0], /48000 KRW\/day/);
+  assert.equal(runtime.getSnapshot().executions[0].outcome, "success");
+  assert.equal(runtime.getSnapshot().executions[0].label, "예산 추천 AI");
+  assert.equal(calls.filter((call) => call.key === ON_DEVICE_AI_PROMPTS[1]).length, 0);
+});
 
 test("request diagnostics distinguish readiness from actual Nano completion without storing content", async (t) => {
   const { runtime } = setup(t);

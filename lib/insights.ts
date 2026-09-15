@@ -24,8 +24,8 @@ export interface RoasBucketSummary {
   noDataCount: number;
 }
 
-const ROAS_GOOD_THRESHOLD = 250;
-const ROAS_OKAY_THRESHOLD = 120;
+export const ROAS_GOOD_THRESHOLD = 250;
+export const ROAS_OKAY_THRESHOLD = 120;
 
 /**
  * 간편 모드 캠페인 요약용 — ROAS 기준으로 캠페인을 좋아요/무난해요/아쉬워요 3단계로 나눈다.

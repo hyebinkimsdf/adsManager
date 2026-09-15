@@ -155,14 +155,14 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
         <CardTitle>AI 자동 설정</CardTitle>
         <EngineBadge engine={engine} analyzing={analyzing} />
       </CardHeader>
-      <p css={{ marginBottom: "0.75rem", fontSize: 12.5, lineHeight: 1.6, color: "var(--color-gray-500)" }}>
+      <p css={{ marginBottom: "0.75rem", fontSize: 12.5, lineHeight: 1.6, color: "var(--color-gray-600)" }}>
         사이트의 버튼을 읽고 무엇을 기록할지 추천해요. 확인하고 저장해야 적용돼요. 구매 버튼 클릭만으로 결제 완료를 확인할 수는 없어요.
       </p>
 
       {(scanQuery.isError || rulesQuery.isError) && <DataState title="사이트 정보나 저장된 설정을 불러오지 못했어요" error onRetry={() => { void scanQuery.refetch(); void rulesQuery.refetch(); }} />}
       {(scanQuery.isPending || rulesQuery.isPending) && <DataState title="사이트와 저장된 설정을 확인하고 있어요" />}
       {!scan && scanQuery.isSuccess && (
-        <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>
+        <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>
           아직 스캔된 데이터가 없어요. 위 연동 코드를 설치한 사이트를 한 번 방문하면 자동으로 스캔돼요.
         </p>
       )}
@@ -170,7 +170,7 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
       {scan && (
         <>
           <div css={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.75rem" }}>
-            <p css={{ fontSize: 12.5, color: "var(--color-gray-500)" }}>
+            <p css={{ fontSize: 12.5, color: "var(--color-gray-600)" }}>
               {formatDateTime(scan.scannedAt)}에 요소 {scan.elements.length}개를 찾았어요.
             </p>
             <Button size="sm" variant="secondary" disabled={analyzing || saving || scanQuery.isError || rulesQuery.isError || rulesQuery.isPending} onClick={handleGenerate}>
@@ -180,7 +180,7 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
           </div>
 
           {suggestions && suggestions.length === 0 && (
-            <p css={{ marginBottom: "0.75rem", fontSize: 13, color: "var(--color-gray-500)" }}>
+            <p css={{ marginBottom: "0.75rem", fontSize: 13, color: "var(--color-gray-600)" }}>
               전환으로 볼 만한 요소를 찾지 못했어요.
             </p>
           )}
@@ -289,12 +289,12 @@ export default function TrackingPage() {
     <div css={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div>
         <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>전환 및 추적 연동</h1>
-        <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
+        <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-600)" }}>
           사이트에 코드를 넣고 방문·구매 기록이 들어오는지 확인해요.
         </p>
       </div>
 
-      <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>테스트 전송은 저장 확인용이에요. 사이트 설치 완료나 새 광고의 연결 완료를 뜻하지 않아요.</p>
+      <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>테스트 전송은 저장 확인용이에요. 사이트 설치 완료나 새 광고의 연결 완료를 뜻하지 않아요.</p>
       <Card>
         <CardHeader>
           <CardTitle>연동할 캠페인</CardTitle>
@@ -321,7 +321,7 @@ export default function TrackingPage() {
               </button>
             );
           })}
-          {campaigns.length === 0 && <p css={{ fontSize: 13, color: "var(--color-gray-500)" }}>먼저 캠페인을 만들어주세요.</p>}
+          {campaigns.length === 0 && <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>먼저 캠페인을 만들어주세요.</p>}
         </div>
       </Card>
 
@@ -333,7 +333,7 @@ export default function TrackingPage() {
             </CardHeader>
             <div css={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               <div>
-                <p css={{ marginBottom: "0.375rem", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                <p css={{ marginBottom: "0.375rem", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                   1. 사이트의 &lt;head&gt;에 픽셀 스크립트를 넣어주세요.
                 </p>
                 <div css={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
@@ -342,7 +342,7 @@ export default function TrackingPage() {
                 </div>
               </div>
               <div>
-                <p css={{ marginBottom: "0.375rem", fontSize: 12.5, color: "var(--color-gray-500)" }}>
+                <p css={{ marginBottom: "0.375rem", fontSize: 12.5, color: "var(--color-gray-600)" }}>
                   2. 사이트를 방문한 뒤 아래에서 기록할 버튼을 골라 저장해요. 구매 완료와 결제 금액은 결제가 끝난 곳에서 따로 보내주세요.
                 </p>
                 <div css={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
@@ -377,7 +377,7 @@ export default function TrackingPage() {
                       <span css={{ fontSize: 13, fontWeight: 600, color: "var(--color-gray-900)" }}>{EVENT_LABEL[type]}</span>
                       <code css={{ fontSize: 11, color: "var(--color-gray-400)" }}>{type}</code>
                     </div>
-                    <p css={{ marginTop: "0.125rem", fontSize: 12.5, color: "var(--color-gray-500)" }}>{EVENT_DESCRIPTION[type]}</p>
+                    <p css={{ marginTop: "0.125rem", fontSize: 12.5, color: "var(--color-gray-600)" }}>{EVENT_DESCRIPTION[type]}</p>
                   </div>
                   <Button size="sm" variant="secondary" disabled={sendingType !== null} onClick={() => handleTestSend(type)}>
                     {sendingType === type ? "전송 중..." : "테스트 전송"}
@@ -415,14 +415,14 @@ export default function TrackingPage() {
                       {e.source === "test" ? "테스트 전송" : "데모 데이터"}
                     </Badge>
                   )}
-                  <span css={{ flex: 1, fontSize: 12.5, color: "var(--color-gray-500)" }}>{formatDateTime(e.occurredAt)}</span>
+                  <span css={{ flex: 1, fontSize: 12.5, color: "var(--color-gray-600)" }}>{formatDateTime(e.occurredAt)}</span>
                   <span css={{ fontSize: 13, fontWeight: 600, color: "var(--color-gray-800)" }}>
                     {e.value > 0 ? `${formatKRW(e.value)}원` : "-"}
                   </span>
                 </div>
               ))}
               {eventsQuery.isSuccess && campaignEvents.length === 0 && (
-                <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-500)" }}>
+                <p css={{ padding: "1rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-600)" }}>
                   아직 수집된 이벤트가 없어요. 위에서 테스트 전송을 눌러보세요.
                 </p>
               )}

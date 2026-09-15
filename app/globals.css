@@ -1,4 +1,6 @@
-@import "pretendard/dist/web/static/pretendard.css";
+/* 정적 굵기별 파일(4개, 합계 약 3MB) 대신 유니코드 범위로 쪼갠 가변 폰트를 쓴다 — 화면에
+   실제로 쓰인 글자가 포함된 조각(파일당 30~40KB)만 내려받아 폰트 전송량을 크게 줄인다. */
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 
 :root {
   /* Toss 톤 컬러 토큰: 강조색은 하나(Blue), 나머지는 그레이 스케일 */
@@ -10,9 +12,13 @@
 
   --color-red-50: #fdedec;
   --color-red-500: #f04452;
+  /* red-500는 밝은 배지 배경(red-50) 위 글자로 쓰면 명암비가 4.5:1에 못 미친다(약 3.3:1). */
+  --color-red-600: #ad1f2a;
 
   --color-green-50: #e9f9ee;
   --color-green-600: #14ae5c;
+  /* green-600은 밝은 배지 배경(green-50) 위 글자로 쓰면 명암비가 4.5:1에 크게 못 미친다(약 2.7:1). */
+  --color-green-700: #16693d;
 
   --color-yellow-50: #fff8e5;
   --color-yellow-500: #f2b400;
@@ -48,7 +54,7 @@
   --radius-lg: 20px;
   --radius-full: 999px;
 
-  --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto,
+  --font-sans: "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui, Roboto,
     "Helvetica Neue", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
 }
 

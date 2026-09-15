@@ -81,9 +81,9 @@ export function ActionProposalCard({
             margin-bottom: 0.75rem;
           `}
         >
-          <span css={{ fontSize: 12.5, color: "var(--color-gray-500)" }}>일 예산</span>
+          <span css={{ fontSize: 12.5, color: "var(--color-gray-600)" }}>일 예산</span>
           <div css={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-            <span css={{ fontSize: 13, color: "var(--color-gray-500)" }}>{formatKRW(currentBudget)}원</span>
+            <span css={{ fontSize: 13, color: "var(--color-gray-600)" }}>{formatKRW(currentBudget)}원</span>
             <span css={{ fontSize: 13, color: "var(--color-gray-400)" }} aria-hidden="true">
               →
             </span>

@@ -98,12 +98,12 @@ export function CampaignListItem({ campaign }: { campaign: Campaign }) {
           {campaign.metricSource !== "live" && (
             <Badge tone="gray">{campaign.metricSource === "demo" ? "예시 실적" : "실적 연결 전"}</Badge>
           )}
-          <span css={{ fontSize: 12, color: "var(--color-gray-500)" }}>
+          <span css={{ fontSize: 12, color: "var(--color-gray-600)" }}>
             {campaign.totalBudget != null ? `총 ${formatCompactKRW(campaign.totalBudget)}원` : `하루 ${formatCompactKRW(campaign.dailyBudget)}원`}
             {campaign.history.length > 0 && ` · 광고비 대비 매출 ${formatPercent(totals.roas, 0)}`}
           </span>
         </div>
-        {campaign.startDate && <p css={{ marginTop: 6, fontSize: 12, color: "var(--color-gray-500)" }}>{campaign.startDate} ~ {campaign.endDate ?? "종료일 없음"}</p>}
+        {campaign.startDate && <p css={{ marginTop: 6, fontSize: 12, color: "var(--color-gray-600)" }}>{campaign.startDate} ~ {campaign.endDate ?? "종료일 없음"}</p>}
         {error && <p role="alert" css={{ marginTop: 6, fontSize: 12, color: "var(--color-red-500)" }}>{error}</p>}
       </div>
       {!campaign.setupStatus && <Toggle

@@ -4,7 +4,7 @@ import { MY_OWNER_ID } from "@/lib/campaigns/owner";
 import { INDUSTRIES, OBJECTIVES } from "@/lib/campaigns/validate";
 import { koreaDate } from "@/lib/campaigns/setup";
 import { CampaignSetupError, createCampaignSetup, getCampaignSetupOptions, isCampaignSetupSchemaError } from "@/lib/campaigns/setupServer";
-import { requireAdminRequest, requireSameOriginMutation } from "@/lib/server/access";
+import { requireSameOriginMutation } from "@/lib/server/access";
 import type { CampaignIndustry, DisplayObjective } from "@/lib/mock/types";
 
 function failure(error: unknown) {
@@ -14,9 +14,10 @@ function failure(error: unknown) {
   return NextResponse.json({ error: "저장 준비가 아직 안 됐어요. 잠시 후 다시 시도해 주세요." }, { status: 503 });
 }
 
+// 포트폴리오 공개 기간(2026-10 중순까지) 동안은 관리자 인증 없이 열어둔다 — 이 경로가 어시스턴트·
+// 캠페인 설정 카드가 쓰는 일반 사용자 플로우라, 인증을 걸면 방문자가 앱을 써볼 수 없다. 공개가
+// 끝나면 requireAdminRequest(req)를 다시 걸어야 한다.
 export async function GET(req: Request) {
-  const denied = requireAdminRequest(req);
-  if (denied) return denied;
   if (!isD1Configured()) return failure(null);
   const params = new URL(req.url).searchParams;
   const objective = params.get("objective") ?? "purchase";
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const denied = requireAdminRequest(req) ?? requireSameOriginMutation(req);
+  const denied = requireSameOriginMutation(req);
   if (denied) return denied;
   if (!isD1Configured()) return failure(null);
   let body: unknown;

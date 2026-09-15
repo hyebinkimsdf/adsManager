@@ -58,6 +58,12 @@ export function validateTargeting(value: unknown): ValidationResult<Targeting> {
   };
 }
 
+function isDateString(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 function isValidDayMetric(value: unknown): value is DayMetric {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
@@ -167,6 +173,17 @@ export function validateCampaignPatch(value: unknown): ValidationResult<Partial<
     const history = validateHistory(v.history);
     if (!history.ok) return history;
     patch.history = history.value;
+  }
+  if (v.startDate !== undefined) {
+    if (!isDateString(v.startDate)) return { ok: false, error: "startDate는 YYYY-MM-DD 형식이어야 합니다." };
+    patch.startDate = v.startDate;
+  }
+  if (v.endDate !== undefined) {
+    if (v.endDate !== null && !isDateString(v.endDate)) return { ok: false, error: "endDate는 YYYY-MM-DD 형식이거나 null이어야 합니다." };
+    patch.endDate = v.endDate as string | null;
+  }
+  if (patch.startDate !== undefined && typeof patch.endDate === "string" && patch.endDate < patch.startDate) {
+    return { ok: false, error: "endDate는 startDate와 같거나 이후여야 합니다." };
   }
 
   return { ok: true, value: patch };

@@ -59,7 +59,7 @@ export default function RewardCampaignsPage() {
       <div css={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
         <div>
           <h1 css={{ fontSize: 18, fontWeight: 700, color: "var(--color-gray-900)" }}>리워드 광고</h1>
-          <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
+          <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-600)" }}>
             리워드 광고의 설정을 저장해요. 실제 광고 집행과 보상 지급은 연결되지 않았어요.
           </p>
         </div>
@@ -87,7 +87,7 @@ export default function RewardCampaignsPage() {
               <Badge tone={PRODUCT_TONE[c.productType]}>{PRODUCT_LABEL[c.productType]}</Badge>
               <div css={{ minWidth: 0, flex: 1 }}>
                 <p css={{ fontSize: 13.5, fontWeight: 600, color: "var(--color-gray-900)" }}>{c.name}</p>
-                <p css={{ marginTop: "0.125rem", fontSize: 12, color: "var(--color-gray-500)" }}>{summarize(c)}</p>
+                <p css={{ marginTop: "0.125rem", fontSize: 12, color: "var(--color-gray-600)" }}>{summarize(c)}</p>
                 <p css={{ marginTop: "0.125rem", fontSize: 11.5, color: "var(--color-gray-400)" }}>
                   {formatDateTime(c.createdAt)} 생성
                 </p>
@@ -125,7 +125,7 @@ export default function RewardCampaignsPage() {
             </div>
           ))}
           {campaigns.length === 0 && (
-            <p css={{ padding: "1.5rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-500)" }}>
+            <p css={{ padding: "1.5rem 0", textAlign: "center", fontSize: 13, color: "var(--color-gray-600)" }}>
               아직 리워드 캠페인이 없어요.
             </p>
           )}

@@ -48,11 +48,11 @@ function StatBlock({
         >
           <Icon style={{ height: "1rem", width: "1rem", color: iconColor }} aria-hidden="true" />
         </span>
-        <span css={{ fontSize: 13, color: "var(--color-gray-500)" }}>{label}</span>
+        <span css={{ fontSize: 13, color: "var(--color-gray-600)" }}>{label}</span>
       </div>
       <p css={{ display: "flex", alignItems: "baseline", gap: "0.25rem" }}>
         <span css={{ fontSize: 22, fontWeight: 700, color: "var(--color-gray-900)" }}>{value}</span>
-        {unit && <span css={{ fontSize: 12, color: "var(--color-gray-500)" }}>{unit}</span>}
+        {unit && <span css={{ fontSize: 12, color: "var(--color-gray-600)" }}>{unit}</span>}
         {increased !== null && (
           <span
             css={{
@@ -66,7 +66,7 @@ function StatBlock({
           </span>
         )}
       </p>
-      <p css={{ fontSize: 12, lineHeight: 1.5, color: "var(--color-gray-500)" }}>{detail}</p>
+      <p css={{ fontSize: 12, lineHeight: 1.5, color: "var(--color-gray-600)" }}>{detail}</p>
     </div>
   );
 }
@@ -118,7 +118,7 @@ export function WeeklySummaryHighlight({
         <div css={{ flex: "1 1 40%", minWidth: 0 }}>
           <div css={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
             <HiOutlineArrowTrendingUp style={{ height: "1rem", width: "1rem", color: "var(--color-green-600)" }} aria-hidden="true" />
-            <span css={{ fontSize: 13, fontWeight: 600, color: "var(--color-gray-500)" }}>이번 주 핵심 요약</span>
+            <span css={{ fontSize: 13, fontWeight: 600, color: "var(--color-gray-600)" }}>이번 주 핵심 요약</span>
           </div>
           <p css={{ marginTop: "0.5rem", fontSize: 19, fontWeight: 700, lineHeight: 1.45, color: "var(--color-gray-900)" }}>
             {headlineParts.length === 2 ? (

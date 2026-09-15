@@ -25,7 +25,7 @@ const rowStyle = css`
   gap: 0.5rem;
   padding: 0.5rem 0.25rem;
   font-size: 12px;
-  color: var(--color-gray-500);
+  color: var(--color-gray-600);
 `;
 
 export function AvailabilityBanner() {

@@ -88,7 +88,7 @@ const mobileNavLinkStyle = (active: boolean) => css`
   font-size: 13px;
   font-weight: 500;
   background-color: ${active ? "var(--color-blue-50)" : "transparent"};
-  color: ${active ? "var(--color-blue-600)" : "var(--color-gray-500)"};
+  color: ${active ? "var(--color-blue-600)" : "var(--color-gray-600)"};
 `;
 
 export function AppShell({ children }: { children: React.ReactNode }) {

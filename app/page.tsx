@@ -65,7 +65,7 @@ export default function HomePage() {
       {dataNotice}
       <div>
         <h1 css={{ fontSize: 20, fontWeight: 700, color: "var(--color-gray-900)" }}>오늘의 광고 현황</h1>
-        <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-500)" }}>
+        <p css={{ marginTop: "0.25rem", fontSize: 13, color: "var(--color-gray-600)" }}>
           우측 하단 ✨ 버튼을 눌러 AI에게 바로 물어볼 수 있어요.
         </p>
       </div>
@@ -88,7 +88,7 @@ export default function HomePage() {
 
       {summary.insights.length > 0 && (
         <Card>
-          <p css={{ marginBottom: "0.75rem", fontSize: 13, fontWeight: 600, color: "var(--color-gray-500)" }}>숫자로 본 광고 현황</p>
+          <p css={{ marginBottom: "0.75rem", fontSize: 13, fontWeight: 600, color: "var(--color-gray-600)" }}>숫자로 본 광고 현황</p>
           <div css={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
             {summary.insights.map((insight) => (
               <div key={insight.id} css={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>

@@ -68,7 +68,7 @@ export function SimpleWeekHeader({
               justify-content: center;
               border-radius: 9999px;
               background: white;
-              color: var(--color-gray-500);
+              color: var(--color-gray-600);
               box-shadow: var(--shadow-card);
             `}
             aria-hidden="true"
@@ -119,7 +119,7 @@ export function SimpleWeekHeader({
             </>
           )}
         </h1>
-        <p css={{ marginTop: "0.375rem", fontSize: 13, color: "var(--color-gray-500)" }}>{subtitle}</p>
+        <p css={{ marginTop: "0.375rem", fontSize: 13, color: "var(--color-gray-600)" }}>{subtitle}</p>
       </div>
     </div>
   );

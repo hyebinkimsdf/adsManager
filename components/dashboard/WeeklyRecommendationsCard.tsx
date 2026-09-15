@@ -26,7 +26,7 @@ const TONE: Record<WeeklyRecommendation["tone"], { bg: string; color: string; ic
   warning: { bg: "var(--color-red-50)", color: "var(--color-red-500)", icon: HiArrowTrendingDown },
   positive: { bg: "var(--color-green-50)", color: "var(--color-green-600)", icon: HiArrowTrendingUp },
   info: { bg: "var(--color-violet-50)", color: "var(--color-violet-600)", icon: HiOutlineUserGroup },
-  neutral: { bg: "var(--color-gray-100)", color: "var(--color-gray-500)", icon: HiOutlineClock },
+  neutral: { bg: "var(--color-gray-100)", color: "var(--color-gray-600)", icon: HiOutlineClock },
 };
 
 // focus_target/observing은 자동 적용할 변경이 없다 — 확인/이동만 한다.
@@ -84,7 +84,7 @@ export function WeeklyRecommendationsCard({ items }: { items: WeeklyRecommendati
                 확인해 볼 광고 설정 <span css={{ color: "var(--color-gray-400)", fontWeight: 500 }}>{items.length}개</span>
               </p>
             </div>
-            <p css={{ marginTop: "0.125rem", fontSize: 13, color: "var(--color-gray-500)" }}>
+            <p css={{ marginTop: "0.125rem", fontSize: 13, color: "var(--color-gray-600)" }}>
               숫자를 비교해 골랐어요. 바꿀 내용은 직접 확인해 주세요.
             </p>
           </div>
@@ -100,7 +100,7 @@ export function WeeklyRecommendationsCard({ items }: { items: WeeklyRecommendati
             padding-top: 0.375rem;
             font-size: 13px;
             font-weight: 500;
-            color: var(--color-gray-500);
+            color: var(--color-gray-600);
             white-space: nowrap;
 
             &:hover {
@@ -161,7 +161,7 @@ export function WeeklyRecommendationsCard({ items }: { items: WeeklyRecommendati
               </span>
               <div css={{ minWidth: 0, flex: 1 }}>
                 <p css={{ fontSize: 14, fontWeight: 700, color: "var(--color-gray-900)" }}>{item.title}</p>
-                <p css={{ marginTop: "0.125rem", fontSize: 13, lineHeight: 1.6, color: "var(--color-gray-500)" }}>
+                <p css={{ marginTop: "0.125rem", fontSize: 13, lineHeight: 1.6, color: "var(--color-gray-600)" }}>
                   {item.detail}
                 </p>
                 {itemState === "error" && (

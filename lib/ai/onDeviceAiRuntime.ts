@@ -71,21 +71,13 @@ export class OnDeviceAiRuntime {
   private starting: Promise<void> | null = null;
   private activeFeature: string | null = null;
   private taskSessions = new Map<LanguageModelSession, () => void>();
-  private runId = 0;
-  private startedAt = 0;
   private executionId = 0;
   private executions = new Map<string, AiExecutionStatus>();
 
   constructor(systemPrompts: readonly string[]) {
     this.models = new Map(systemPrompts.map((prompt, index) => [
-      prompt, resource<LanguageModelSession>(`model-${index}`, ["대화 AI", "캠페인 초안 AI", "추적 규칙 AI"][index] ?? "AI"),
+      prompt, resource<LanguageModelSession>(`model-${index}`, ["대화 AI", "추적 규칙 AI", "예산 추천 AI"][index] ?? "AI"),
     ]));
-  }
-
-  private log(message: string, details: Record<string, unknown> = {}) {
-    console.info(`[on-device-ai][run:${this.runId}] ${message}`, {
-      elapsedMs: Math.round(performance.now() - this.startedAt), ...details,
-    });
   }
 
   getSnapshot = (): AiSnapshot => this.snapshot;
@@ -118,7 +110,6 @@ export class OnDeviceAiRuntime {
     if (!entry || entry.outcome !== "running") return;
     const next = { ...entry, ...update };
     this.executions.set(entry.featureId, next);
-    this.log("요청 처리 상태", { ...next, previousStage: entry.stage, stageDurationMs: Math.max(0, next.durationMs - entry.durationMs) });
     this.publish();
   };
 
@@ -136,10 +127,6 @@ export class OnDeviceAiRuntime {
         progress: Math.round(dependencies.reduce((sum, item) => sum + item.progress, 0) / dependencies.length),
       };
     });
-    for (const feature of features) {
-      const before = this.snapshot.features.find((item) => item.id === feature.id)?.state ?? "checking";
-      if (before !== feature.state) this.log("기능 준비 상태 변경", { feature: feature.label, from: before, to: feature.state });
-    }
     this.snapshot = {
       state: features[0]?.state ?? "unsupported",
       // 준비 진행률의 평균이며 실제 다운로드 바이트 비율은 아니다.
@@ -153,12 +140,6 @@ export class OnDeviceAiRuntime {
     if (this.lifetime) return this.starting ?? Promise.resolve();
     const lifetime = new AbortController();
     this.lifetime = lifetime;
-    this.runId += 1;
-    this.startedAt = performance.now();
-    this.log("Provider 준비 시작", {
-      languageModelApi: typeof window !== "undefined" && !!window.LanguageModel,
-      translatorApi: typeof window !== "undefined" && !!window.Translator,
-    });
     this.checking = this.checkAvailability(lifetime);
     this.starting = this.checking.then(async () => {
       if (lifetime.signal.aborted) return;
@@ -181,7 +162,6 @@ export class OnDeviceAiRuntime {
         window.Translator.availability({ sourceLanguage: "en", targetLanguage: "ko" }),
       ]), { signal: lifetime.signal, timeoutMs: PREPARATION_WAIT_MS });
       if (lifetime.signal.aborted) return;
-      this.log("브라우저 availability 확인", { model, koToEn: toEn, enToKo: toKo });
       for (const item of this.resources()) {
         const availability = item === this.toEn ? toEn : item === this.toKo ? toKo : model;
         item.installed = availability === "available";
@@ -213,10 +193,7 @@ export class OnDeviceAiRuntime {
     if (next === this.activeFeature) return;
     this.activeFeature = next;
     this.publish();
-    if (next) {
-      this.log("화면 진입 사전 준비", { feature: this.models.get(next)?.label });
-      void this.prepareFeature(next, "route");
-    }
+    if (next) void this.prepareFeature(next, "route");
   };
 
   /** 대화·현재 화면의 기능만 재시도한다. 방문하지 않은 기능은 사용자 제스처로도 깨우지 않는다. */
@@ -265,16 +242,8 @@ export class OnDeviceAiRuntime {
     const dependencies = [model, this.toEn, this.toKo];
     if (dependencies.some((item) => item.state === "unsupported")) return Promise.resolve(false);
     if (dependencies.every((item) => item.value)) {
-      this.log("준비된 세션·번역기 재사용", { feature: model.label, trigger });
       return Promise.resolve(true);
     }
-    this.log("기능 준비 시도", {
-      feature: model.label, trigger,
-      userActivation: typeof navigator !== "undefined" ? navigator.userActivation?.isActive ?? null : null,
-      reuse: dependencies.filter((item) => item.value).map((item) => item.label),
-      join: dependencies.filter((item) => item.pending).map((item) => item.label),
-      create: dependencies.filter((item) => !item.value && !item.pending).map((item) => item.label),
-    });
     const modelApi = window.LanguageModel;
     const translatorApi = window.Translator;
     // 필요한 세 자원의 create()를 사용자 활성화가 유지되는 같은 호출에서 시작한다.
@@ -292,9 +261,7 @@ export class OnDeviceAiRuntime {
     this.publish();
     return Promise.all(tasks).then((results) => {
       if (lifetime.signal.aborted) return false;
-      const ready = results.every(Boolean);
-      this.log("기능 준비 시도 종료", { feature: model.label, ready });
-      return ready;
+      return results.every(Boolean);
     });
   };
 
@@ -304,9 +271,6 @@ export class OnDeviceAiRuntime {
   ): Promise<boolean> {
     if (item.value) return Promise.resolve(true);
     if (item.pending) return item.pending;
-    const startedAt = performance.now();
-    let lastProgressBucket = -1;
-    this.log("세션 생성 시작", { resource: item.label, previousState: item.state });
     item.state = "initializing";
     const monitor = (target: EventTarget) => {
       target.addEventListener("downloadprogress", (event) => {
@@ -315,11 +279,6 @@ export class OnDeviceAiRuntime {
         if (typeof loaded !== "number" || !Number.isFinite(loaded)) return;
         item.progress = Math.max(item.progress, Math.round(Math.max(0, Math.min(1, loaded)) * 100));
         item.state = item.installed || item.progress === 100 ? "initializing" : "downloading";
-        const bucket = Math.floor(item.progress / 10);
-        if (bucket !== lastProgressBucket) {
-          lastProgressBucket = bucket;
-          this.log("모델 준비 진행 이벤트", { resource: item.label, progress: item.progress, state: item.state });
-        }
         this.publish();
       });
     };
@@ -331,13 +290,11 @@ export class OnDeviceAiRuntime {
         item.installed = true;
         item.progress = 100;
         item.state = "available";
-        this.log("자원 준비 완료", { resource: item.label, durationMs: Math.round(performance.now() - startedAt) });
         return true;
       } catch (error) {
         if (lifetime.signal.aborted) return false;
         const name = error instanceof Error ? error.name : "";
         item.state = name === "NotAllowedError" ? "downloadable" : "error";
-        this.log("자원 준비 중단", { resource: item.label, errorName: name, nextState: item.state });
         console.warn(`[on-device-ai] ${item.label} 준비 실패`, error);
         return false;
       } finally {
@@ -356,10 +313,7 @@ export class OnDeviceAiRuntime {
     const signal = options.signal ? AbortSignal.any([options.signal, lifetime.signal]) : lifetime.signal;
     try {
       return await waitForAi(this.prepareFeature(systemPrompt), { signal, timeoutMs: options.timeoutMs ?? PREPARATION_WAIT_MS });
-    } catch (error) {
-      if (!lifetime.signal.aborted) this.log("개별 요청 준비 대기 종료", {
-        feature: this.models.get(systemPrompt)?.label, reason: error instanceof Error ? error.name : "error",
-      });
+    } catch {
       return false;
     }
   };
@@ -387,12 +341,10 @@ export class OnDeviceAiRuntime {
         };
         this.taskSessions.set(session, release);
         signal.addEventListener("abort", release, { once: true });
-        this.log("일회성 작업 세션 준비 완료", { feature: this.models.get(systemPrompt)?.label, cloned: !!base.clone });
         return session;
       });
       return await waitForAi(owned, { signal, timeoutMs: PREPARATION_WAIT_MS });
-    } catch (error) {
-      if (!signal.aborted) this.log("일회성 세션 준비 실패", { reason: error instanceof Error ? error.name : "error" });
+    } catch {
       return null;
     }
   };
@@ -400,10 +352,6 @@ export class OnDeviceAiRuntime {
   releaseTaskSession = (session: LanguageModelSession) => { this.taskSessions.get(session)?.(); };
 
   dispose = () => {
-    if (this.lifetime) this.log("Provider 종료·자원 해제", {
-      released: this.resources().filter((item) => item.value).map((item) => item.label),
-      pending: this.resources().filter((item) => item.pending).map((item) => item.label),
-    });
     this.lifetime?.abort();
     this.lifetime = null;
     this.checking = null;
