@@ -2,6 +2,7 @@
 "use client";
 
 import { css } from "@emotion/react";
+import { useEffect } from "react";
 import { atom, useAtom } from "jotai";
 import { useHydrateAtoms } from "jotai/utils";
 import { HiOutlineBeaker, HiCheck, HiExclamationTriangle, HiChevronRight } from "react-icons/hi2";
@@ -75,6 +76,18 @@ export function PerformanceTestInjector({ campaigns }: { campaigns: Campaign[] }
   const [endDate, setEndDate] = useAtom(endDateAtom);
   const [dateState, setDateState] = useAtom(dateSaveStateAtom);
   const [dateError, setDateError] = useAtom(dateSaveErrorAtom);
+
+  // campaignIdAtom은 모듈 스코프라 useHydrateAtoms는 앱 전체에서 딱 한 번만 초기값을 채운다 —
+  // 그 최초 마운트 시점에 campaigns가 비어 있었다면(또는 그 뒤 캠페인이 삭제됐다면) 영원히 빈
+  // 값에 머무를 수 있다. 그러면 저장 버튼이 빈 id로 PATCH를 보내 404/405로 계속 실패하므로,
+  // 목록에 없는 선택은 여기서 첫 캠페인으로 되돌려 스스로 복구하게 한다.
+  useEffect(() => {
+    if (campaigns.length === 0 || campaigns.some((c) => c.id === campaignId)) return;
+    const next = campaigns[0];
+    setCampaignId(next.id);
+    setStartDate(next.startDate ?? "");
+    setEndDate(next.endDate ?? null);
+  }, [campaigns, campaignId, setCampaignId, setStartDate, setEndDate]);
 
   if (campaigns.length === 0) return null;
 

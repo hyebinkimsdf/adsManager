@@ -168,6 +168,7 @@ export function updateTargeting(id: string, targeting: Partial<Campaign["targeti
 }
 
 export function updatePublishDates(id: string, startDate: string, endDate: string | null) {
+  if (!getCachedCampaign(id)) return Promise.reject(new Error("캠페인 정보를 불러오지 못했어요. 목록을 새로고침한 뒤 다시 시도해 주세요."));
   return applyUpdate(() => repo.updatePublishDates(id, startDate, endDate));
 }
 
