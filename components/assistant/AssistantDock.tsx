@@ -3,6 +3,7 @@
 
 import { css } from "@emotion/react";
 import { useRef, useState, useEffect, type FormEvent } from "react";
+import { useAtom } from "jotai";
 import { HiSparkles } from "react-icons/hi2";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { Button } from "@/components/ui/Button";
@@ -28,34 +29,10 @@ import {
   openAssistantDock,
   closeAssistantDock,
 } from "@/lib/ui/assistantDock";
+import { chatTurnsAtom } from "@/lib/ai/chatHistory";
 import type { ChatTurn } from "@/lib/ai/types";
 
 const SUGGESTIONS = ["새 광고 만들기", "이번 주 성과 어때?", "예산 늘려줘", "성과 낮은 캠페인 알려줘"];
-
-const CHAT_HISTORY_STORAGE_KEY = "adsManager.assistant.turns";
-
-const WELCOME_TURN: ChatTurn = {
-  id: "welcome",
-  role: "assistant",
-  reply: {
-    reply: "안녕하세요! 캠페인 성과 확인부터 예산 조정까지 대화로 도와드릴게요.",
-    actions: [],
-  },
-};
-
-/** 새로고침·재방문에도 대화가 이어지도록 로컬에 저장해 둔 기록을 불러온다. 없거나 손상됐으면 환영 메시지로 시작한다. */
-function loadStoredTurns(): ChatTurn[] {
-  if (typeof window === "undefined") return [WELCOME_TURN];
-  try {
-    const raw = window.localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
-    if (!raw) return [WELCOME_TURN];
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed as ChatTurn[];
-  } catch {
-    // 저장된 값이 손상됐거나 스토리지를 쓸 수 없는 환경 — 환영 메시지로 새로 시작한다.
-  }
-  return [WELCOME_TURN];
-}
 
 function nextTurnId() {
   return `turn-${crypto.randomUUID()}`;
@@ -94,9 +71,8 @@ export function AssistantDock() {
   const busyRef = useRef(false);
   const [showSetup, setShowSetup] = useState(false);
   const setup = useCampaignSetup(false);
-  // 서버 렌더링 결과(환영 메시지 한 줄)와 어긋나지 않도록 초기값은 고정해 두고,
-  // 마운트 후에만 저장된 기록을 불러와 하이드레이션 불일치를 피한다.
-  const [turns, setTurns] = useState<ChatTurn[]>([WELCOME_TURN]);
+  // 새로고침·재방문에도 대화가 이어지도록 로컬 스토리지와 동기화된 atom을 쓴다.
+  const [turns, setTurns] = useAtom(chatTurnsAtom);
   const { ask } = useLanguageModel();
   // 홈 화면과 캐시 키(["campaigns","summary"])를 공유하므로, 홈에서 이미 로드했다면
   // 신선도 유지 기간에는 추가 요청 없이 같은 요약(topCampaigns ≤ 20건)을 재사용한다 — 캠페인이 수천 건이어도
@@ -111,28 +87,6 @@ export function AssistantDock() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [turns]);
-
-  // 마운트 시 1회, 저장된 대화 기록을 불러온다.
-  const hydratedRef = useRef(false);
-  useEffect(() => {
-    setTurns(loadStoredTurns());
-  }, []);
-
-  useEffect(() => {
-    // 위 하이드레이션 효과가 초기값(WELCOME_TURN)을 저장된 기록으로 덮어쓰기 전까지는
-    // 아직 채 불러오지 못한 저장값을 환영 메시지로 다시 덮어쓰지 않도록 건너뛴다.
-    if (!hydratedRef.current) {
-      hydratedRef.current = true;
-      return;
-    }
-    try {
-      // 응답 대기 중(pending) 턴은 새로고침 시 영영 멈춰 보이므로 저장 대상에서 뺀다.
-      const persistable = turns.filter((t) => !t.pending);
-      window.localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(persistable));
-    } catch {
-      // 프라이빗 모드 등 스토리지를 쓸 수 없는 환경 — 대화는 이번 세션에서만 유지된다.
-    }
   }, [turns]);
 
   async function send(message: string) {
