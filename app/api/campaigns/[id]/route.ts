@@ -6,6 +6,7 @@ import { ensureSeeded } from "@/lib/campaigns/ensureSeed";
 import { MY_OWNER_ID } from "@/lib/campaigns/owner";
 import { recordBudgetAdjustment } from "@/lib/campaigns/budgetAdjustments";
 import { sumHistory } from "@/lib/mock/campaigns";
+import { invalidateSummaryCache } from "@/lib/campaigns/summaryCache";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!isD1Configured()) {
@@ -93,6 +94,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (rows.length === 0) {
       return NextResponse.json({ error: "캠페인을 찾을 수 없습니다." }, { status: 404 });
     }
+    invalidateSummaryCache();
 
     // 감사 로그는 부가 기능이다 — 여기서 실패해도 이미 반영된 예산 변경 자체를 실패로 되돌리거나
     // 사용자에게 에러로 보여주지 않는다(방금 성공한 저장을 실패로 오인하게 만들 수 있기 때문).
@@ -127,6 +129,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   try {
     await d1Query("DELETE FROM Campaign WHERE id = ? AND ownerId = ?", [id, MY_OWNER_ID]);
+    invalidateSummaryCache();
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";

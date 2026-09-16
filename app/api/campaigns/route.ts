@@ -4,6 +4,7 @@ import { toCampaign, toCampaignRow, type CampaignRow } from "@/lib/campaigns/ser
 import { validateCampaignCreate } from "@/lib/campaigns/validate";
 import { ensureSeeded } from "@/lib/campaigns/ensureSeed";
 import { MY_OWNER_ID } from "@/lib/campaigns/owner";
+import { invalidateSummaryCache } from "@/lib/campaigns/summaryCache";
 
 const MAX_PAGE_LIMIT = 100;
 const DEFAULT_PAGE_LIMIT = 20;
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [row.id, row.name, row.adType, row.objective, row.industry, row.status, row.dailyBudget, row.targeting, row.history, row.metricSource, MY_OWNER_ID]
     );
+    invalidateSummaryCache();
     return NextResponse.json(toCampaign(row), { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";

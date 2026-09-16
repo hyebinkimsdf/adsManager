@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { d1Query, isD1Configured } from "@/lib/d1";
 import { CAMPAIGNS } from "@/lib/mock/campaigns";
 import { toCampaign, toCampaignRow, type CampaignRow } from "@/lib/campaigns/serialize";
+import { invalidateSummaryCache } from "@/lib/campaigns/summaryCache";
 
 // 데모 시드로 전체 캠페인 테이블을 되돌리는 개발용 작업이다. 운영 데이터를 통째로 지울 수 있어
 // 프로덕션에서는 관리자 인증이 있어도 막는다.
@@ -23,6 +24,7 @@ export async function POST() {
       );
     }
     const rows = await d1Query<CampaignRow>("SELECT * FROM Campaign ORDER BY createdAt DESC");
+    invalidateSummaryCache();
     return NextResponse.json(rows.map(toCampaign));
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";

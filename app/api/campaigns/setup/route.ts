@@ -5,6 +5,7 @@ import { INDUSTRIES, OBJECTIVES } from "@/lib/campaigns/validate";
 import { koreaDate } from "@/lib/campaigns/setup";
 import { CampaignSetupError, createCampaignSetup, getCampaignSetupOptions, isCampaignSetupSchemaError } from "@/lib/campaigns/setupServer";
 import { requireSameOriginMutation } from "@/lib/server/access";
+import { invalidateSummaryCache } from "@/lib/campaigns/summaryCache";
 import type { CampaignIndustry, DisplayObjective } from "@/lib/mock/types";
 
 function failure(error: unknown) {
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ error: "입력 내용을 확인해 주세요." }, { status: 400 }); }
   try {
     const { campaign, created } = await createCampaignSetup(body, MY_OWNER_ID);
+    if (created) invalidateSummaryCache();
     return NextResponse.json(campaign, { status: created ? 201 : 200 });
   } catch (error) { return failure(error); }
 }
