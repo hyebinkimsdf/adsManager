@@ -158,6 +158,7 @@ export function adjustBudgetByPercent(id: string, percent: number, reasonKind?: 
 }
 
 export function setStatus(id: string, status: Campaign["status"]) {
+  if (!getCachedCampaign(id)) return Promise.reject(new Error("캠페인 정보를 불러오지 못했어요. 목록을 새로고침한 뒤 다시 시도해 주세요."));
   return applyUpdate(() => repo.setStatus(id, status));
 }
 

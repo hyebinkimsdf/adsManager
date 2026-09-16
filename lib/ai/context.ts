@@ -42,6 +42,21 @@ export function buildCampaignRefMap(snapshots: CampaignSnapshot[]): Record<strin
 const REF_PATTERN = /#\d+/g;
 
 /**
+ * 모델이 지시(systemPrompt 규칙 4: "campaignId must always be one of the ids from the given
+ * campaign list")를 어기고 campaignId를 비우거나 목록에 없는 값을 지어내는 경우를 걸러낸다 —
+ * 특히 "예산 조정해줘"처럼 특정 캠페인을 짚지 않은 모호한 요청에서 작은 온디바이스 모델이
+ * 그럴듯한 액션을 만들면서 대상을 놓치기 쉽다. 이걸 그대로 두면 카드는 정상으로 보이지만
+ * 적용 시 빈/잘못된 id로 요청이 나가 원인 불명의 오류로 실패한다 — 애초에 카드를 만들지 않는다.
+ */
+export function dropInvalidActions(reply: AssistantReply, snapshots: CampaignSnapshot[]): AssistantReply {
+  const knownIds = new Set(snapshots.map((s) => s.id));
+  return {
+    ...reply,
+    actions: reply.actions.filter((a) => a.type === "info" || (a.campaignId !== undefined && knownIds.has(a.campaignId))),
+  };
+}
+
+/**
  * 모델·번역기를 거친 답변에서 참조 토큰을 실제 한글 캠페인 이름으로 되돌린다. 모델에게
  * 애초에 이름(한글)을 보여주지 않고 토큰만 준 뒤 이 치환으로 이름을 채우면, 표시되는
  * 이름이 모델의 번역 품질과 무관하게 항상 정확하다 — "시드"가 "씨앗"으로 둔갑하는 문제를

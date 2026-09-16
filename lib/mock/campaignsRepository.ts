@@ -26,6 +26,10 @@ export interface BudgetChangeMeta {
 
 // PATCH 응답에 이미 갱신된 캠페인 전체가 담겨 있으므로, 호출부가 최신 값을 다시 조회할 필요가 없다.
 function patchCampaign(id: string, patch: Partial<Campaign> & { budgetChangeSource?: string; budgetChangeReasonKind?: string }): Promise<Campaign> {
+  // id가 빈 문자열이면 `${API_BASE}/${id}`가 "/api/campaigns/"가 되어 트레일링 슬래시 리다이렉트를 타고
+  // PATCH를 지원하지 않는 목록 라우트(/api/campaigns)로 떨어진다 — 그 결과가 원인을 알 수 없는 405다.
+  // 호출부마다 개별적으로 막기보다(놓치기 쉬움) 실제로 PATCH를 보내는 이 지점에서 한 번에 막는다.
+  if (!id) return Promise.reject(new Error("캠페인 정보를 불러오지 못했어요. 목록을 새로고침한 뒤 다시 시도해 주세요."));
   return fetchJson<Campaign>(`${API_BASE}/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -82,6 +86,8 @@ export function addCampaign(campaign: Campaign): Promise<Campaign> {
 }
 
 export async function deleteCampaign(id: string): Promise<void> {
+  // DELETE도 PATCH와 같은 이유로 빈 id면 목록 라우트로 떨어져 405가 난다 — 동일하게 막는다.
+  if (!id) throw new Error("캠페인 정보를 불러오지 못했어요. 목록을 새로고침한 뒤 다시 시도해 주세요.");
   await fetchJson(`${API_BASE}/${id}`, { method: "DELETE" });
 }
 
