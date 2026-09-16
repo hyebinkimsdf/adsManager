@@ -214,6 +214,10 @@ function estimateConversionRateDelta(campaignRate: number, overallRate: number):
  * "이번 주 추천 액션" 카드의 판단(어떤 캠페인을, 어떻게, 몇 % 바꿀지)과 설명 문구를 모두 규칙으로
  * 결정한다. campaignId/kind/percent가 3가지 kind로 한정돼 있고 설명에 필요한 수치도 이미 다 갖고
  * 있어서, title/detail도 AI에게 새로 쓰게 하지 않고 여기서 숫자를 그대로 문장에 끼워 넣는다.
+ *
+ * 조건을 만족하는 캠페인을 모두 반환한다 — "전체에서 가장 나쁜/좋은 캠페인 1개"만 뽑으면 실제로
+ * 개선이 필요하거나 조정 후 관찰 중인 캠페인이 여럿이어도 화면엔 하나만 남고 나머지가 조용히
+ * 사라진다. 개수 제한은 대신 UI(WeeklyRecommendationsCard)의 페이지네이션이 맡는다.
  */
 export interface DecidedRecommendation {
   id: string;
@@ -251,62 +255,64 @@ function observingNotice(c: Campaign, message: string, tone: "warning" | "positi
   };
 }
 
+/** decideWeeklyRecommendations가 반환할 수 있는 항목 수의 안전장치 — 정상적인 사용에서는 거의
+ * 걸리지 않는다(계정 하나에 활성+지출 있는 캠페인이 이만큼 몰리는 경우는 드물다). 개수 자체를
+ * 제한하는 목적이 아니라 응답 크기가 캠페인 수에 비례해 무한정 커지지 않도록 막는 상한선이다. */
+const RECOMMENDATIONS_LIMIT = 50;
+
 function decideWeeklyRecommendations(campaigns: Campaign[], now = new Date()): DecidedRecommendation[] {
   const withTotals = withLast7Totals(campaigns);
   const results: DecidedRecommendation[] = [];
-  const used = new Set<string>();
 
-  // 예산을 낮출 후보의 "진짜 최악"을 먼저 찾는다. 쿨다운 중인 캠페인을 건너뛰고 차악을 대신
-  // 추천하지 않는다 — 그러면 "왜 진짜 안 좋은 캠페인 대신 덜 안 좋은 걸 추천하지?"처럼 더 헷갈린다.
-  // 대신 관찰 중이라는 사실 자체를 알려준다(observingNotice).
-  const worst = [...withTotals].sort((a, b) => a.totals.roas - b.totals.roas)[0];
-  if (worst && worst.totals.roas < 150) {
-    used.add(worst.c.id);
-    const cooldown = budgetCooldownStatus(worst.c, now);
+  // 예산을 낮추는 게 좋은 캠페인 — 심각한(ROAS 낮은) 순서로 조건을 만족하는 캠페인을 모두 담는다.
+  // 조정 직후 관찰 중이면 재추천 대신 이유를 알려준다(observingNotice).
+  const lowerCandidates = [...withTotals].filter((w) => w.totals.roas < 150).sort((a, b) => a.totals.roas - b.totals.roas);
+  for (const w of lowerCandidates) {
+    const cooldown = budgetCooldownStatus(w.c, now);
     if (cooldown.cooling) {
-      results.push(observingNotice(worst.c, cooldown.message, "warning"));
-    } else {
-      const percent = -20;
-      results.push({
-        id: `low-eff-${worst.c.id}`,
-        campaignId: worst.c.id,
-        campaignName: worst.c.name,
-        kind: "lower_budget",
-        tone: "warning",
-        percent,
-        buttonLabel: "적용하기",
-        impactLabel: "예상 절감 금액",
-        impactValue: estimateSavings(worst.totals.spend, percent),
-        title: `${worst.c.name}의 예산을 줄이는 게 좋아요`,
-        detail: `최근 7일간 ${formatKRW(worst.totals.spend)}원이 사용됐지만, 전환이 ${
-          worst.totals.conversions === 0 ? "없었어요" : "적었어요"
-        }.`,
-      });
+      results.push(observingNotice(w.c, cooldown.message, "warning"));
+      continue;
     }
+    const percent = -20;
+    results.push({
+      id: `low-eff-${w.c.id}`,
+      campaignId: w.c.id,
+      campaignName: w.c.name,
+      kind: "lower_budget",
+      tone: "warning",
+      percent,
+      buttonLabel: "적용하기",
+      impactLabel: "예상 절감 금액",
+      impactValue: estimateSavings(w.totals.spend, percent),
+      title: `${w.c.name}의 예산을 줄이는 게 좋아요`,
+      detail: `최근 7일간 ${formatKRW(w.totals.spend)}원이 사용됐지만, 전환이 ${
+        w.totals.conversions === 0 ? "없었어요" : "적었어요"
+      }.`,
+    });
   }
 
-  const best = [...withTotals].filter((w) => !used.has(w.c.id)).sort((a, b) => b.totals.roas - a.totals.roas)[0];
-  if (best && best.totals.roas >= 150) {
-    used.add(best.c.id);
-    const cooldown = budgetCooldownStatus(best.c, now);
+  // 예산을 늘려도 좋은 캠페인 — 좋은(ROAS 높은) 순서로 조건을 만족하는 캠페인을 모두 담는다.
+  const raiseCandidates = [...withTotals].filter((w) => w.totals.roas >= 150).sort((a, b) => b.totals.roas - a.totals.roas);
+  for (const w of raiseCandidates) {
+    const cooldown = budgetCooldownStatus(w.c, now);
     if (cooldown.cooling) {
-      results.push(observingNotice(best.c, cooldown.message, "positive"));
-    } else {
-      const percent = 15;
-      results.push({
-        id: `raise-budget-${best.c.id}`,
-        campaignId: best.c.id,
-        campaignName: best.c.name,
-        kind: "raise_budget",
-        tone: "positive",
-        percent,
-        buttonLabel: "적용하기",
-        impactLabel: "예상 추가 전환",
-        impactValue: estimateExtraConversions(best.totals.conversions, percent),
-        title: "성과가 좋은 캠페인의 예산을 늘려보세요",
-        detail: `${best.c.name}의 예산을 15% 늘리면, 더 많은 전환을 기대할 수 있어요.`,
-      });
+      results.push(observingNotice(w.c, cooldown.message, "positive"));
+      continue;
     }
+    const percent = 15;
+    results.push({
+      id: `raise-budget-${w.c.id}`,
+      campaignId: w.c.id,
+      campaignName: w.c.name,
+      kind: "raise_budget",
+      tone: "positive",
+      percent,
+      buttonLabel: "적용하기",
+      impactLabel: "예상 추가 전환",
+      impactValue: estimateExtraConversions(w.totals.conversions, percent),
+      title: `${w.c.name}의 예산을 늘려보세요`,
+      detail: `${w.c.name}의 예산을 15% 늘리면, 더 많은 전환을 기대할 수 있어요.`,
+    });
   }
 
   const topConversion = [...withTotals].sort((a, b) => b.totals.conversions - a.totals.conversions)[0];
@@ -334,7 +340,7 @@ function decideWeeklyRecommendations(campaigns: Campaign[], now = new Date()): D
     });
   }
 
-  return results.slice(0, 3);
+  return results.slice(0, RECOMMENDATIONS_LIMIT);
 }
 
 /**

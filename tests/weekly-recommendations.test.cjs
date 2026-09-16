@@ -77,13 +77,13 @@ test("a recently budget-adjusted campaign can still be picked for focus_target (
   assert.ok(recs.some((r) => r.kind === "focus_target" && r.campaignId === "camp-1"));
 });
 
-test("when the single worst campaign is cooling down, a less-bad campaign is NOT promoted to fill its slot", () => {
-  // 두 캠페인 다 똑같이 나쁘면(roas 동률) "진짜 최악"인 cooling을 관찰 중으로 알리고, fresh를
-  // 대신 추천하지 않는다 — "왜 더 나은 캠페인 말고 저기를 추천하지?" 같은 혼란을 막기 위함.
+test("each struggling campaign is judged on its own — a cooling one gets an observing notice while a fresh one still gets recommended", () => {
+  // 캠페인마다 개별 판단한다 — 전체에서 "진짜 최악" 1개만 뽑던 이전 방식과 달리, 두 캠페인 모두
+  // 나쁘면(roas 동률) 둘 다 화면에 남아야 한다: cooling은 관찰 중 알림, fresh는 예산 축소 추천.
   const cooling = campaign({ id: "camp-cooling", history: poorLast7Days(), lastBudgetAdjustmentAt: NOW.toISOString() });
   const fresh = campaign({ id: "camp-fresh", history: poorLast7Days() });
   const recs = buildWeeklyRecommendations([cooling, fresh], NOW);
-  assert.equal(recs.filter((r) => r.kind === "lower_budget").length, 0);
+  assert.ok(recs.some((r) => r.kind === "lower_budget" && r.campaignId === "camp-fresh"));
   const observing = recs.find((r) => r.kind === "observing");
   assert.equal(observing?.campaignId, "camp-cooling");
 });
@@ -166,17 +166,38 @@ test("composeWeeklySummary ignores fixApplied when the trend isn't actually bad"
   assert.equal(healthy.status, "healthy");
 });
 
-test("with two struggling campaigns where only the milder one is cooling down, the true worst still gets recommended", () => {
-  // roas 0%(revenue 없음) — milderCooling(roas 30%)보다 확정적으로 더 나쁘다. 배열 순서가 아니라
-  // 실제 roas 차이로 "최악"이 갈린다는 걸 확인한다(둘 다 roas가 같으면 순서에만 의존하게 된다).
+test("with two struggling campaigns where only the milder one is cooling down, both are shown — the worse one recommended and the cooling one under observation", () => {
   const worse = campaign({ id: "camp-worse", history: poorLast7Days() });
   const milderCooling = campaign({
     id: "camp-milder-cooling",
     history: poorLast7Days().map((d) => ({ ...d, conversions: 1, revenue: 3000 })), // roas 30%
     lastBudgetAdjustmentAt: NOW.toISOString(),
   });
-  const recs = buildWeeklyRecommendations([milderCooling, worse], NOW); // milderCooling을 먼저 둬서 순서 의존이 아님을 확인
+  const recs = buildWeeklyRecommendations([milderCooling, worse], NOW);
   const lowerBudget = recs.find((r) => r.kind === "lower_budget");
   assert.equal(lowerBudget?.campaignId, "camp-worse");
-  assert.ok(!recs.some((r) => r.kind === "observing"), "milderCooling never qualified as the top candidate, so no notice for it either");
+  const observing = recs.find((r) => r.kind === "observing");
+  assert.equal(observing?.campaignId, "camp-milder-cooling");
+});
+
+test("every qualifying campaign gets its own recommendation, not just a single top pick per category", () => {
+  const strugglers = ["camp-bad-1", "camp-bad-2", "camp-bad-3"].map((id) => campaign({ id, history: poorLast7Days() }));
+  const goodHistory = Array.from({ length: 7 }, (_, i) => ({
+    label: `D-${6 - i}`,
+    spend: 10000,
+    impressions: 1000,
+    clicks: 200,
+    conversions: 20,
+    revenue: 40000, // roas 400%
+  }));
+  const winners = ["camp-good-1", "camp-good-2"].map((id) => campaign({ id, history: goodHistory }));
+
+  const recs = buildWeeklyRecommendations([...strugglers, ...winners], NOW);
+
+  for (const c of strugglers) {
+    assert.ok(recs.some((r) => r.kind === "lower_budget" && r.campaignId === c.id), `${c.id} should be recommended for a budget cut`);
+  }
+  for (const c of winners) {
+    assert.ok(recs.some((r) => r.kind === "raise_budget" && r.campaignId === c.id), `${c.id} should be recommended for a budget raise`);
+  }
 });

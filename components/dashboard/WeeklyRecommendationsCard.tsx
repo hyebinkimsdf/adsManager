@@ -2,7 +2,7 @@
 "use client";
 
 import { css } from "@emotion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   HiArrowTrendingDown,
@@ -12,6 +12,7 @@ import {
   HiSparkles,
   HiCheck,
   HiChevronRight,
+  HiChevronLeft,
   HiArrowPath,
   HiExclamationTriangle,
 } from "react-icons/hi2";
@@ -34,6 +35,10 @@ const NON_APPLICABLE_KINDS: WeeklyRecommendation["kind"][] = ["focus_target", "o
 
 type ApplyState = "idle" | "pending" | "done" | "error";
 
+// 조건을 만족하는 캠페인을 모두 보여주다 보면 계정에 따라 항목이 많아질 수 있어, 한 번에 다
+// 펼치는 대신 페이지로 나눠 보여준다.
+const PAGE_SIZE = 5;
+
 async function applyRecommendation(item: WeeklyRecommendation) {
   if (item.kind === "lower_budget" || item.kind === "raise_budget") {
     await adjustBudgetByPercent(item.campaignId, item.percent, item.kind);
@@ -43,8 +48,17 @@ async function applyRecommendation(item: WeeklyRecommendation) {
 export function WeeklyRecommendationsCard({ items }: { items: WeeklyRecommendation[] }) {
   const [state, setState] = useState<Record<string, ApplyState>>({});
   const [errorMessage, setErrorMessage] = useState<Record<string, string>>({});
+  const [page, setPage] = useState(0);
+
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  // 적용/새 데이터로 목록 길이가 바뀌어 현재 페이지가 범위를 벗어나면 마지막 페이지로 당긴다.
+  useEffect(() => {
+    setPage((p) => Math.min(p, totalPages - 1));
+  }, [totalPages]);
 
   if (items.length === 0) return null;
+
+  const pageItems = items.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   async function handleApply(item: WeeklyRecommendation) {
     setState((prev) => ({ ...prev, [item.id]: "pending" }));
@@ -124,7 +138,7 @@ export function WeeklyRecommendationsCard({ items }: { items: WeeklyRecommendati
           }
         `}
       >
-        {items.map((item, i) => {
+        {pageItems.map((item, i) => {
           const tone = TONE[item.tone];
           const Icon = tone.icon;
           const itemState: ApplyState = state[item.id] ?? "idle";
@@ -138,7 +152,7 @@ export function WeeklyRecommendationsCard({ items }: { items: WeeklyRecommendati
                 gap: 0.75rem;
                 padding: 0.875rem 0;
                 ${i === 0 && "padding-top: 0;"}
-                ${i === items.length - 1 && "padding-bottom: 0;"}
+                ${i === pageItems.length - 1 && "padding-bottom: 0;"}
                 @media (min-width: 640px) {
                   flex-direction: row;
                   align-items: center;
@@ -254,6 +268,70 @@ export function WeeklyRecommendationsCard({ items }: { items: WeeklyRecommendati
           );
         })}
       </div>
+
+      {totalPages > 1 && (
+        <div
+          css={css`
+            margin-top: 0.875rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+          `}
+        >
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            aria-label="이전 페이지"
+            css={css`
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 1.75rem;
+              height: 1.75rem;
+              border-radius: 9999px;
+              border: 1px solid var(--border-subtle);
+              background: none;
+              color: var(--color-gray-600);
+              cursor: pointer;
+              &:disabled {
+                opacity: 0.4;
+                cursor: default;
+              }
+            `}
+          >
+            <HiChevronLeft style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
+          </button>
+          <span css={{ fontSize: 12.5, color: "var(--color-gray-600)" }}>
+            {page + 1} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page === totalPages - 1}
+            aria-label="다음 페이지"
+            css={css`
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 1.75rem;
+              height: 1.75rem;
+              border-radius: 9999px;
+              border: 1px solid var(--border-subtle);
+              background: none;
+              color: var(--color-gray-600);
+              cursor: pointer;
+              &:disabled {
+                opacity: 0.4;
+                cursor: default;
+              }
+            `}
+          >
+            <HiChevronRight style={{ height: "0.875rem", width: "0.875rem" }} aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </Card>
   );
 }
