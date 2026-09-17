@@ -22,7 +22,8 @@ import { LineChart } from "@/components/dashboard/LineChart";
 import { BudgetRecommendationPanel } from "@/components/campaigns/BudgetRecommendationPanel";
 import { campaignStateLabel } from "@/lib/campaigns/list";
 import { getEventRules } from "@/lib/tracking/rulesRepository";
-import { EVENT_LABEL } from "@/lib/tracking/events";
+import { getCampaignEvents } from "@/lib/tracking/eventsRepository";
+import { EVENT_LABEL, EVENT_ORDER } from "@/lib/tracking/events";
 import type { CampaignIndustry } from "@/lib/mock/types";
 
 const INDUSTRY_KEYS = Object.keys(INDUSTRY_LABEL) as CampaignIndustry[];
@@ -120,6 +121,18 @@ function PixelInstallCard({ campaignId }: { campaignId: string }) {
   });
   const rules = rulesQuery.data ?? [];
 
+  // 픽셀이 보낸 전환 이벤트를 짧은 주기로 다시 불러와, 새로고침 없이도 통계가 갱신되게 한다.
+  const eventsQuery = useQuery({
+    queryKey: ["campaign-events", campaignId],
+    queryFn: () => getCampaignEvents(campaignId),
+    refetchInterval: 5000,
+  });
+  const events = eventsQuery.data ?? [];
+  const eventStats = EVENT_ORDER.map((type) => {
+    const matched = events.filter((e) => e.eventType === type);
+    return { type, count: matched.length, totalValue: matched.reduce((sum, e) => sum + e.value, 0) };
+  }).filter((stat) => stat.count > 0);
+
   return (
     <Card>
       <CardHeader>
@@ -169,6 +182,52 @@ function PixelInstallCard({ campaignId }: { campaignId: string }) {
             ))}
           </div>
         )}
+
+        <div css={{ marginTop: "0.25rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border-subtle)" }}>
+          <p css={{ marginBottom: "0.625rem", fontSize: 12.5, fontWeight: 600, color: "var(--color-gray-700)" }}>
+            실시간 전환 통계 · 5초마다 갱신
+          </p>
+          {eventsQuery.isPending && <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>수신된 이벤트를 확인하고 있어요...</p>}
+          {eventsQuery.isError && <p css={{ fontSize: 13, color: "var(--color-red-600)" }}>이벤트를 불러오지 못했어요.</p>}
+          {eventsQuery.isSuccess && eventStats.length === 0 && (
+            <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>아직 수신된 전환 이벤트가 없어요.</p>
+          )}
+          {eventStats.length > 0 && (
+            <div
+              css={css`
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+                @media (min-width: 640px) {
+                  grid-template-columns: repeat(4, 1fr);
+                }
+              `}
+            >
+              {eventStats.map(({ type, count, totalValue }) => (
+                <div
+                  key={type}
+                  css={css`
+                    border-radius: var(--radius-sm);
+                    border: 1px solid var(--border-subtle);
+                    padding: 0.75rem;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.25rem;
+                  `}
+                >
+                  <span css={{ fontSize: 12, fontWeight: 500, color: "var(--color-gray-600)" }}>{EVENT_LABEL[type]}</span>
+                  <span css={{ display: "flex", alignItems: "baseline", gap: "0.25rem" }}>
+                    <span css={{ fontSize: 20, fontWeight: 700, color: "var(--color-gray-900)" }}>{count.toLocaleString()}</span>
+                    <span css={{ fontSize: 12, fontWeight: 500, color: "var(--color-gray-600)" }}>건</span>
+                  </span>
+                  {totalValue > 0 && (
+                    <span css={{ fontSize: 12, color: "var(--color-gray-600)" }}>합계 {formatKRW(totalValue)}원</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </Card>
   );
