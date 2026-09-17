@@ -514,7 +514,7 @@ function TrackingGuideCard() {
             white-space: pre;
           `}
         >
-          {`AdsAI.track("purchase", { value: 49000 });`}
+          {`// TODO: orderAmount 자리에 결제가 끝난 이 페이지에서 실제 결제 금액(원)을 담고 있는 값을 넣어주세요\nAdsAI.track("purchase", { value: orderAmount });`}
         </code>
       </div>
 
@@ -558,7 +558,7 @@ function TrackingPageInner() {
   const snippet = selected
     ? `<script src="${origin || "https://<이 앱의 도메인>"}/pixel.js" data-campaign-id="${selected.id}"></script>`
     : "";
-  const usageSnippet = `AdsAI.track("purchase", { value: 49000 });`;
+  const usageSnippet = `// TODO: orderAmount 자리에 결제가 끝난 이 페이지에서 실제 결제 금액(원)을 담고 있는 값을 넣어주세요\nAdsAI.track("purchase", { value: orderAmount });`;
 
   const campaignEvents = selected
     ? events.filter((e) => e.campaignId === selected.id).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
