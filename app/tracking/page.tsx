@@ -394,6 +394,79 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
   );
 }
 
+const GUIDE_STEPS = [
+  { title: "코드 설치", body: "위 연동 코드를 사이트에 붙여넣어요. 그 순간부터 방문 기록이 쌓이기 시작해요." },
+  { title: "한 번 방문", body: "설치한 사이트를 한 번 열어보면, 그 페이지 안의 버튼과 폼을 훑어봐요." },
+  { title: "추천 확인", body: "전환으로 볼만한 항목만 추려서 보여드려요. 필요한 것만 체크하면 돼요." },
+  { title: "적용", body: "적용을 누르면 그때부터 방문자가 클릭하거나 폼을 제출할 때마다 자동으로 기록돼요." },
+] as const;
+
+/** AI 자동 설정 카드 옆에 붙는 사용법 안내. "분석·엔진·모델" 같은 말 없이, 실제로 뭘 누르고
+ * 뭐가 쌓이는지만 순서대로 알려준다. */
+function TrackingGuideCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>이렇게 써보세요</CardTitle>
+      </CardHeader>
+      <div css={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {GUIDE_STEPS.map((step, i) => (
+          <div key={step.title} css={{ display: "flex", gap: "0.75rem" }}>
+            <span
+              css={css`
+                display: flex;
+                flex-shrink: 0;
+                align-items: center;
+                justify-content: center;
+                width: 1.5rem;
+                height: 1.5rem;
+                border-radius: 9999px;
+                background: var(--color-blue-50);
+                font-size: 12px;
+                font-weight: 700;
+                color: var(--color-blue-600);
+              `}
+            >
+              {i + 1}
+            </span>
+            <div>
+              <p css={{ fontSize: 13.5, fontWeight: 600, color: "var(--color-gray-900)" }}>{step.title}</p>
+              <p css={{ marginTop: "0.125rem", fontSize: 12.5, lineHeight: 1.6, color: "var(--color-gray-600)" }}>{step.body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div css={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border-subtle)" }}>
+        <p css={{ fontSize: 12.5, lineHeight: 1.6, color: "var(--color-gray-600)" }}>
+          버튼을 눌렀다고 결제까지 끝난 건 아니에요. 결제가 실제로 끝나는 페이지에 아래 코드 한 줄만 넣어주면 정확하게 잡혀요.
+        </p>
+        <code
+          css={css`
+            display: block;
+            margin-top: 0.5rem;
+            overflow-x: auto;
+            border-radius: var(--radius-sm);
+            background: var(--color-gray-900);
+            padding: 0.625rem 0.75rem;
+            font-size: 12px;
+            color: #e5e7eb;
+            white-space: pre;
+          `}
+        >
+          {`AdsAI.track("purchase", { value: 49000 });`}
+        </code>
+      </div>
+
+      <div css={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border-subtle)" }}>
+        <p css={{ fontSize: 12.5, lineHeight: 1.6, color: "var(--color-gray-600)" }}>
+          추천 목록이 비어있다면, 연동 코드를 설치한 사이트를 아직 안 열어봤을 확률이 높아요. 한 번 들렀다가 와서 &ldquo;다시 분석&rdquo;을 눌러보세요.
+        </p>
+      </div>
+    </Card>
+  );
+}
+
 function TrackingPageInner() {
   const campaignsQuery = useCampaignsQuery();
   const eventsQuery = useConversionEventsQuery();
@@ -508,7 +581,20 @@ function TrackingPageInner() {
             </div>
           </Card>
 
-          <AutoConfigSection key={selected.id} campaignId={selected.id} />
+          <div
+            css={css`
+              display: grid;
+              grid-template-columns: 1fr;
+              gap: 1rem;
+              align-items: start;
+              @media (min-width: 900px) {
+                grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+              }
+            `}
+          >
+            <AutoConfigSection key={selected.id} campaignId={selected.id} />
+            <TrackingGuideCard />
+          </div>
 
           <Card>
             <CardHeader>
