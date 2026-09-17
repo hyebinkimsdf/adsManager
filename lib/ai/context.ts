@@ -47,12 +47,20 @@ const REF_PATTERN = /#\d+/g;
  * 특히 "예산 조정해줘"처럼 특정 캠페인을 짚지 않은 모호한 요청에서 작은 온디바이스 모델이
  * 그럴듯한 액션을 만들면서 대상을 놓치기 쉽다. 이걸 그대로 두면 카드는 정상으로 보이지만
  * 적용 시 빈/잘못된 id로 요청이 나가 원인 불명의 오류로 실패한다 — 애초에 카드를 만들지 않는다.
+ *
+ * 액션이 하나도 안 남으면(제안했던 게 전부 걸러졌으면) 텍스트만 남는다 — 모델은 액션으로 이미
+ * "완결된 답"을 줬다고 보고 quickReplies를 스스로 안 채우므로(systemPrompt 규칙 8), 그대로 두면
+ * 사용자가 이어갈 방법이 없는 막다른 대화가 된다. budgetRequest.ts의 "어떤 캠페인인가요?" 되묻기와
+ * 같은 방식으로, 캠페인을 골라 원래 요청을 그대로 다시 보낼 수 있는 선택지를 대신 채워준다.
  */
-export function dropInvalidActions(reply: AssistantReply, snapshots: CampaignSnapshot[]): AssistantReply {
+export function dropInvalidActions(reply: AssistantReply, snapshots: CampaignSnapshot[], userMessage: string): AssistantReply {
   const knownIds = new Set(snapshots.map((s) => s.id));
+  const kept = reply.actions.filter((a) => a.type === "info" || (a.campaignId !== undefined && knownIds.has(a.campaignId)));
+  const strandedByFilter = reply.actions.length > 0 && kept.length === 0 && !reply.quickReplies?.length;
   return {
     ...reply,
-    actions: reply.actions.filter((a) => a.type === "info" || (a.campaignId !== undefined && knownIds.has(a.campaignId))),
+    actions: kept,
+    ...(strandedByFilter ? { quickReplies: snapshots.slice(0, 4).map((s) => `${s.name} ${userMessage}`) } : {}),
   };
 }
 

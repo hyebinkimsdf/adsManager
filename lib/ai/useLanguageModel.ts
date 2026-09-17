@@ -95,7 +95,7 @@ export function useLanguageModel(): UseLanguageModelResult {
       const correction = waitingCorrection(message, history);
       if (correction) return { reply: { reply: correction, actions: [] }, engine: "preview" };
       const onDeviceReply = await runOnDevice({ message, campaigns, history });
-      if (onDeviceReply) return { reply: resolveCampaignRefs(dropInvalidActions(onDeviceReply, campaigns), campaigns), engine: "on-device" };
+      if (onDeviceReply) return { reply: resolveCampaignRefs(dropInvalidActions(onDeviceReply, campaigns, message), campaigns), engine: "on-device" };
 
       // Firefox/Safari처럼 온디바이스 모델이 없거나 응답에 실패한 경우, 규칙 기반 미리보기로 폴백한다.
       return { reply: mockAssistantReply(message, campaigns), engine: "preview" };
