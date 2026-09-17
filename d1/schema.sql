@@ -87,7 +87,7 @@ CREATE INDEX IF NOT EXISTS idx_conversion_event_source ON ConversionEvent(source
 CREATE UNIQUE INDEX IF NOT EXISTS idx_conversion_event_event_id ON ConversionEvent(eventId) WHERE eventId IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_conversion_event_campaign_order ON ConversionEvent(campaignId, orderId) WHERE orderId IS NOT NULL;
 
--- pixel.js가 설치된 사이트를 방문자 브라우저에서 직접 크롤링해 보낸 결과. 캠페인당 최신 1건만 유지한다.
+-- pixel.js가 설치된 사이트를 방문자 브라우저에서 직접 크롤링해 보낸 결과. 캠페인 안에서 페이지(pageUrl)마다 최신 1건씩 유지한다.
 CREATE TABLE IF NOT EXISTS SiteScan (
   id TEXT PRIMARY KEY,
   campaignId TEXT NOT NULL,

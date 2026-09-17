@@ -17,6 +17,17 @@ export async function getLatestScan(campaignId: string): Promise<SiteScan | null
   return fetchJson<SiteScan | null>(`${SCAN_API_BASE}?campaignId=${encodeURIComponent(campaignId)}`);
 }
 
+export interface InstalledPath {
+  pageUrl: string;
+  scannedAt: string;
+}
+
+/** 지금까지 픽셀 스캔이 확인된 모든 경로(페이지별 최신 1건씩) — "연동 코드" 화면에서
+ * 스크립트가 실제로 어느 경로에 설치돼 있는지 보여주는 데 쓴다. */
+export async function getInstalledPaths(campaignId: string): Promise<InstalledPath[]> {
+  return fetchJson<InstalledPath[]>(`${SCAN_API_BASE}?campaignId=${encodeURIComponent(campaignId)}&paths=1`);
+}
+
 /** 캠페인에 현재 활성화된 자동 추적 규칙 목록. */
 export async function getEventRules(campaignId: string): Promise<EventRule[]> {
   return fetchJson<EventRule[]>(`${RULES_API_BASE}?campaignId=${encodeURIComponent(campaignId)}`);

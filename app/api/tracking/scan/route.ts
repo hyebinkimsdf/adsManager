@@ -23,15 +23,26 @@ function isSiteElement(value: unknown): value is SiteElement {
 }
 
 // 관리자 화면에서 "AI 자동 설정"의 입력 데이터로 쓸 최신 스캔 1건을 조회한다.
+// ?paths=1을 주면 대신, 지금까지 스캔이 확인된 모든 경로(페이지별 최신 1건씩) 목록을 돌려준다 —
+// "전환 및 추적 연동" 화면에서 스크립트가 실제로 어느 경로에 설치돼 있는지 보여주는 데 쓴다.
 export async function GET(req: Request) {
   if (!isD1Configured()) {
     return NextResponse.json({ error: "Cloudflare D1이 설정되지 않았습니다." }, { status: 501 });
   }
-  const campaignId = new URL(req.url).searchParams.get("campaignId");
+  const url = new URL(req.url);
+  const campaignId = url.searchParams.get("campaignId");
   if (!campaignId) {
     return NextResponse.json({ error: "campaignId가 필요합니다." }, { status: 400 });
   }
   try {
+    if (url.searchParams.get("paths") === "1") {
+      const rows = await d1Query<{ pageUrl: string; scannedAt: string }>(
+        "SELECT pageUrl, scannedAt FROM SiteScan WHERE campaignId = ? ORDER BY scannedAt DESC",
+        [campaignId]
+      );
+      return NextResponse.json(rows);
+    }
+
     const rows = await d1Query<{ id: string; campaignId: string; pageUrl: string; elements: string; scannedAt: string }>(
       "SELECT * FROM SiteScan WHERE campaignId = ? ORDER BY scannedAt DESC LIMIT 1",
       [campaignId]
@@ -52,7 +63,9 @@ export async function GET(req: Request) {
   }
 }
 
-// pixel.js가 사이트를 크롤링한 결과를 저장한다. 캠페인당 최신 스캔 1건만 유지한다.
+// pixel.js가 사이트를 크롤링한 결과를 저장한다. 캠페인 안에서 페이지(pageUrl)마다 최신 스캔
+// 1건씩 유지한다 — 같은 캠페인이라도 방문한 페이지가 다르면 서로 덮어쓰지 않아야, 그 목록으로
+// "지금까지 설치가 확인된 경로"를 보여줄 수 있다.
 export async function POST(req: Request) {
   if (!isD1Configured()) {
     return NextResponse.json({ error: "Cloudflare D1이 설정되지 않았습니다." }, { status: 501, headers: CORS_HEADERS });
@@ -71,7 +84,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    await d1Query("DELETE FROM SiteScan WHERE campaignId = ?", [body.campaignId]);
+    await d1Query("DELETE FROM SiteScan WHERE campaignId = ? AND pageUrl = ?", [body.campaignId, body.pageUrl]);
     await d1Query(
       "INSERT INTO SiteScan (id, campaignId, pageUrl, elements, scannedAt) VALUES (?, ?, ?, ?, ?)",
       [`scan-${crypto.randomUUID()}`, body.campaignId, body.pageUrl, JSON.stringify(elements), new Date().toISOString()]

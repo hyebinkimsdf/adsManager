@@ -14,7 +14,7 @@ import { useCampaignsQuery } from "@/lib/mock/store";
 import { useConversionEventsQuery, conversionEventsQueryKey } from "@/lib/tracking/useConversionEvents";
 import { DataState } from "@/components/ui/DataState";
 import { sendTestEvent } from "@/lib/tracking/eventsRepository";
-import { getLatestScan, getEventRules, saveEventRules } from "@/lib/tracking/rulesRepository";
+import { getLatestScan, getEventRules, saveEventRules, getInstalledPaths } from "@/lib/tracking/rulesRepository";
 import { EVENT_ORDER, EVENT_LABEL, EVENT_DESCRIPTION } from "@/lib/tracking/events";
 import { useTrackingRules } from "@/lib/ai/useTrackingRules";
 import type { TrackingRuleSuggestion } from "@/lib/ai/trackingRulesSchema";
@@ -80,6 +80,66 @@ const codeBlockStyle = css`
 
 const siteScanQueryKey = (campaignId: string) => ["site-scan", campaignId] as const;
 const eventRulesQueryKey = (campaignId: string) => ["event-rules", campaignId] as const;
+const installedPathsQueryKey = (campaignId: string) => ["installed-paths", campaignId] as const;
+
+/** 스크립트를 설치한 사이트에서 실제로 방문이 확인된 경로 목록. 설치 코드 바로 아래 보여줘서,
+ * "설치했는데 잘 됐는지" 굳이 개발자 도구를 안 열어봐도 여기서 바로 확인할 수 있게 한다. */
+function InstalledPathsSection({ campaignId }: { campaignId: string }) {
+  const query = useQuery({
+    queryKey: installedPathsQueryKey(campaignId),
+    queryFn: () => getInstalledPaths(campaignId),
+    refetchInterval: 5000,
+  });
+  const paths = query.data ?? [];
+
+  return (
+    <div>
+      <p css={{ marginBottom: "0.375rem", fontSize: 12.5, color: "var(--color-gray-600)" }}>
+        3. 설치가 끝나면 실제로 어느 경로에서 확인됐는지 여기 나타나요.
+      </p>
+      {query.isPending && <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>확인하고 있어요...</p>}
+      {query.isError && <p css={{ fontSize: 13, color: "var(--color-red-600)" }}>설치 경로를 불러오지 못했어요.</p>}
+      {query.isSuccess && paths.length === 0 && (
+        <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>
+          아직 설치가 확인되지 않았어요. 스크립트를 넣은 사이트를 한 번 방문하면 여기에 나타나요.
+        </p>
+      )}
+      {paths.length > 0 && (
+        <div css={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+          {paths.map((p) => (
+            <div
+              key={p.pageUrl}
+              css={css`
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.75rem;
+                border-radius: var(--radius-sm);
+                border: 1px solid var(--border-subtle);
+                padding: 0.5rem 0.75rem;
+              `}
+            >
+              <span
+                css={{
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  fontSize: 12.5,
+                  fontWeight: 500,
+                  color: "var(--color-gray-900)",
+                }}
+              >
+                {p.pageUrl}
+              </span>
+              <span css={{ flexShrink: 0, fontSize: 12, color: "var(--color-gray-400)" }}>{formatDateTime(p.scannedAt)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /**
  * "GTM처럼 이벤트·변수를 직접 설정하지 않아도, 스크립트가 크롤링해온 요소를 AI가 보고
@@ -578,6 +638,7 @@ function TrackingPageInner() {
                   <CopyButton text={usageSnippet} />
                 </div>
               </div>
+              <InstalledPathsSection key={selected.id} campaignId={selected.id} />
             </div>
           </Card>
 
