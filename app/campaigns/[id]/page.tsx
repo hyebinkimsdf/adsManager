@@ -5,6 +5,7 @@ import { css } from "@emotion/react";
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { HiCheck, HiExclamationTriangle, HiSparkles } from "react-icons/hi2";
 import { useCampaign, useBudgetAdjustmentsQuery } from "@/lib/mock/store";
 import { updateBudget, setStatus, updateIndustry, deleteCampaign } from "@/lib/mock/store";
@@ -20,6 +21,8 @@ import { SummaryCard } from "@/components/dashboard/SummaryCard";
 import { LineChart } from "@/components/dashboard/LineChart";
 import { BudgetRecommendationPanel } from "@/components/campaigns/BudgetRecommendationPanel";
 import { campaignStateLabel } from "@/lib/campaigns/list";
+import { getEventRules } from "@/lib/tracking/rulesRepository";
+import { EVENT_LABEL } from "@/lib/tracking/events";
 import type { CampaignIndustry } from "@/lib/mock/types";
 
 const INDUSTRY_KEYS = Object.keys(INDUSTRY_LABEL) as CampaignIndustry[];
@@ -104,6 +107,69 @@ function BudgetAdjustmentHistory({ campaignId }: { campaignId: string }) {
           ))}
         </div>
       )}
+    </Card>
+  );
+}
+
+/** 이 캠페인에 지금 어떤 픽셀 스크립트/자동 추적 규칙이 설치돼 있는지 확인하고,
+ * 임시 테스트 경로와 스크립트 수정 페이지로 바로 이동할 수 있게 해준다. */
+function PixelInstallCard({ campaignId }: { campaignId: string }) {
+  const rulesQuery = useQuery({
+    queryKey: ["event-rules", campaignId],
+    queryFn: () => getEventRules(campaignId),
+  });
+  const rules = rulesQuery.data ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>픽셀 설치</CardTitle>
+      </CardHeader>
+      <div css={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        <div css={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+          <Link
+            href={`/pixel-test/${campaignId}`}
+            css={css`
+              font-size: 13px;
+              font-weight: 600;
+              color: var(--color-blue-600);
+              &:hover {
+                color: var(--color-blue-700);
+              }
+            `}
+          >
+            테스트 설치 경로 열기 →
+          </Link>
+          <Link
+            href={`/tracking?campaignId=${campaignId}`}
+            css={css`
+              font-size: 13px;
+              font-weight: 600;
+              color: var(--color-blue-600);
+              &:hover {
+                color: var(--color-blue-700);
+              }
+            `}
+          >
+            스크립트 수정하러 가기 →
+          </Link>
+        </div>
+
+        {rulesQuery.isPending && <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>설정을 확인하고 있어요...</p>}
+        {rulesQuery.isError && <p css={{ fontSize: 13, color: "var(--color-red-600)" }}>설정을 불러오지 못했어요.</p>}
+        {rulesQuery.isSuccess && rules.length === 0 && (
+          <p css={{ fontSize: 13, color: "var(--color-gray-600)" }}>아직 설정된 자동 추적 규칙이 없어요.</p>
+        )}
+        {rules.length > 0 && (
+          <div css={{ display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
+            {rules.map((rule) => (
+              <Badge key={rule.id} tone="gray">
+                {EVENT_LABEL[rule.eventType]} · {rule.label}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
     </Card>
   );
 }
@@ -388,6 +454,8 @@ export default function CampaignDetailPage() {
           )}
         </div>
       </Card>
+
+      <PixelInstallCard campaignId={campaign.id} />
 
       <BudgetAdjustmentHistory campaignId={campaign.id} />
 

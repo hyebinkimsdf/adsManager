@@ -2,7 +2,8 @@
 "use client";
 
 import { css } from "@emotion/react";
-import { useState, useSyncExternalStore } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { HiOutlineClipboard, HiOutlineCheck, HiOutlineSparkles } from "react-icons/hi2";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -247,17 +248,25 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
   );
 }
 
-export default function TrackingPage() {
+function TrackingPageInner() {
   const campaignsQuery = useCampaignsQuery();
   const eventsQuery = useConversionEventsQuery();
   const campaigns = campaignsQuery.data ?? [];
   const events = eventsQuery.data ?? [];
   const origin = useOrigin();
+  const searchParams = useSearchParams();
+  const campaignIdParam = searchParams.get("campaignId");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sendingType, setSendingType] = useState<ConversionEventType | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
 
-  const selected = campaigns.find((c) => c.id === selectedId) ?? campaigns[0] ?? null;
+  // 클릭으로 고른 캠페인(selectedId)이 우선이고, 아직 아무것도 안 골랐으면
+  // 캠페인 상세에서 넘어온 ?campaignId= 값을, 그것도 없으면 첫 캠페인을 보여준다.
+  const selected =
+    campaigns.find((c) => c.id === selectedId) ??
+    (campaignIdParam ? campaigns.find((c) => c.id === campaignIdParam) : null) ??
+    campaigns[0] ??
+    null;
 
   const snippet = selected
     ? `<script src="${origin || "https://<이 앱의 도메인>"}/pixel.js" data-campaign-id="${selected.id}"></script>`
@@ -431,5 +440,13 @@ export default function TrackingPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function TrackingPage() {
+  return (
+    <Suspense fallback={null}>
+      <TrackingPageInner />
+    </Suspense>
   );
 }
