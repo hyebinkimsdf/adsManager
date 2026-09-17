@@ -21,7 +21,7 @@ import type { TrackingRuleSuggestion } from "@/lib/ai/trackingRulesSchema";
 import type { EngineKind } from "@/lib/ai/types";
 import { queryClient } from "@/lib/queryClient";
 import { formatDateTime, formatKRW } from "@/lib/format";
-import type { ConversionEventType } from "@/lib/mock/types";
+import type { ConversionEventType, EventRule } from "@/lib/mock/types";
 
 function noopSubscribe() {
   return () => {};
@@ -98,6 +98,12 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editEventType, setEditEventType] = useState<ConversionEventType>("page_view");
+  const [ruleActionId, setRuleActionId] = useState<string | null>(null);
+  const [ruleActionError, setRuleActionError] = useState<string | null>(null);
+
   const scan = scanQuery.data;
   const activeRules = rulesQuery.data ?? [];
 
@@ -147,6 +153,57 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
       setError(err instanceof Error ? err.message : "저장에 실패했어요.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function startEdit(rule: EventRule) {
+    setEditingId(rule.id);
+    setEditLabel(rule.label);
+    setEditEventType(rule.eventType);
+    setRuleActionError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  // 규칙 저장 API가 "전체 교체" 방식이라, 수정/삭제도 지금 규칙 목록을 고쳐서 통째로 다시 저장한다.
+  async function saveEdit(ruleId: string) {
+    if (!editLabel.trim()) return;
+    setRuleActionId(ruleId);
+    setRuleActionError(null);
+    try {
+      const next = activeRules.map((r) => ({
+        selector: r.selector,
+        trigger: r.trigger,
+        eventType: r.id === ruleId ? editEventType : r.eventType,
+        label: r.id === ruleId ? editLabel.trim() : r.label,
+      }));
+      await saveEventRules(campaignId, next);
+      await queryClient.invalidateQueries({ queryKey: eventRulesQueryKey(campaignId) });
+      setEditingId(null);
+    } catch (err) {
+      setRuleActionError(err instanceof Error ? err.message : "수정에 실패했어요.");
+    } finally {
+      setRuleActionId(null);
+    }
+  }
+
+  async function deleteRule(ruleId: string) {
+    if (!window.confirm("이 규칙을 삭제할까요?")) return;
+    setRuleActionId(ruleId);
+    setRuleActionError(null);
+    try {
+      const next = activeRules
+        .filter((r) => r.id !== ruleId)
+        .map((r) => ({ selector: r.selector, trigger: r.trigger, eventType: r.eventType, label: r.label }));
+      await saveEventRules(campaignId, next);
+      await queryClient.invalidateQueries({ queryKey: eventRulesQueryKey(campaignId) });
+      if (editingId === ruleId) setEditingId(null);
+    } catch (err) {
+      setRuleActionError(err instanceof Error ? err.message : "삭제에 실패했어요.");
+    } finally {
+      setRuleActionId(null);
     }
   }
 
@@ -235,13 +292,102 @@ function AutoConfigSection({ campaignId }: { campaignId: string }) {
           <p css={{ marginBottom: "0.5rem", fontSize: 12.5, fontWeight: 600, color: "var(--color-gray-700)" }}>
             저장된 자동 기록 설정 {activeRules.length}개 · 사이트 적용 여부는 별도 확인이 필요해요
           </p>
-          <div css={{ display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
-            {activeRules.map((rule) => (
-              <Badge key={rule.id} tone="gray">
-                {EVENT_LABEL[rule.eventType]} · {rule.label}
-              </Badge>
-            ))}
+          <div css={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {activeRules.map((rule) => {
+              const isEditing = editingId === rule.id;
+              const isBusy = ruleActionId === rule.id;
+              return (
+                <div
+                  key={rule.id}
+                  css={css`
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 0.5rem;
+                    border-radius: var(--radius-sm);
+                    border: 1px solid var(--border-subtle);
+                    padding: 0.5rem 0.75rem;
+                  `}
+                >
+                  {isEditing ? (
+                    <>
+                      <select
+                        value={editEventType}
+                        onChange={(e) => setEditEventType(e.target.value as ConversionEventType)}
+                        css={css`
+                          border-radius: var(--radius-sm);
+                          border: 1px solid var(--border-subtle);
+                          padding: 0.375rem 0.5rem;
+                          font-size: 12.5px;
+                        `}
+                      >
+                        {EVENT_ORDER.map((type) => (
+                          <option key={type} value={type}>
+                            {EVENT_LABEL[type]}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        value={editLabel}
+                        onChange={(e) => setEditLabel(e.target.value)}
+                        aria-label="규칙 설명"
+                        css={css`
+                          flex: 1;
+                          min-width: 100px;
+                          border-radius: var(--radius-sm);
+                          border: 1px solid var(--border-subtle);
+                          padding: 0.375rem 0.5rem;
+                          font-size: 12.5px;
+                        `}
+                      />
+                      <Button size="sm" variant="primary" disabled={isBusy || !editLabel.trim()} onClick={() => saveEdit(rule.id)}>
+                        {isBusy ? "저장 중..." : "저장"}
+                      </Button>
+                      <Button size="sm" variant="secondary" disabled={isBusy} onClick={cancelEdit}>
+                        취소
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Badge tone="gray">{EVENT_LABEL[rule.eventType]}</Badge>
+                      <span css={{ flex: 1, minWidth: 100, fontSize: 12.5, color: "var(--color-gray-700)" }}>{rule.label}</span>
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => startEdit(rule)}
+                        css={css`
+                          font-size: 12px;
+                          font-weight: 600;
+                          color: var(--color-blue-600);
+                          &:hover {
+                            color: var(--color-blue-700);
+                          }
+                        `}
+                      >
+                        수정
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => deleteRule(rule.id)}
+                        css={css`
+                          font-size: 12px;
+                          font-weight: 600;
+                          color: var(--color-red-500);
+                          &:hover {
+                            color: var(--color-red-600);
+                          }
+                        `}
+                      >
+                        {isBusy ? "삭제 중..." : "삭제"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
+          {ruleActionError && <p css={{ marginTop: "0.5rem", fontSize: 12.5, color: "var(--color-red-500)" }}>{ruleActionError}</p>}
         </div>
       )}
     </Card>

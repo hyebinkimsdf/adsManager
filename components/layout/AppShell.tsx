@@ -94,6 +94,14 @@ const mobileNavLinkStyle = (active: boolean) => css`
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const mode = useUiMode();
+
+  // /pixel-test는 실제 방문자 사이트를 흉내 내는 테스트 페이지다. 관리자 내비게이션/어시스턴트가
+  // 같이 렌더되면 pixel.js의 스캔이 "AI 광고 관리자" 같은 셸 UI까지 사이트 요소로 잡아내
+  // AI 추천에 엉뚱하게 섞여 들어간다 — 그래서 이 경로는 셸 없이 그대로 렌더한다.
+  if (pathname?.startsWith("/pixel-test")) {
+    return <>{children}</>;
+  }
+
   const navGroups = mode === "simple" ? SIMPLE_NAV_GROUPS : FULL_NAV_GROUPS;
   const navItems = navGroups.flatMap((group) => group.items);
 
