@@ -2,8 +2,8 @@
 "use client";
 
 import { css } from "@emotion/react";
-import { Suspense, useState, useSyncExternalStore } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { HiOutlineClipboard, HiOutlineCheck, HiOutlineSparkles } from "react-icons/hi2";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -533,6 +533,7 @@ function TrackingPageInner() {
   const campaigns = campaignsQuery.data ?? [];
   const events = eventsQuery.data ?? [];
   const origin = useOrigin();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const campaignIdParam = searchParams.get("campaignId");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -546,6 +547,13 @@ function TrackingPageInner() {
     (campaignIdParam ? campaigns.find((c) => c.id === campaignIdParam) : null) ??
     campaigns[0] ??
     null;
+
+  // 캠페인을 골랐는데 주소가 그대로면 새로고침하거나 링크를 공유했을 때 방금 고른 캠페인을 잃는다 —
+  // 선택이 바뀔 때마다 주소의 campaignId를 같이 맞춰, 캠페인마다 경로가 서로 달라지게 한다.
+  useEffect(() => {
+    if (!selected || campaignIdParam === selected.id) return;
+    router.replace(`/tracking?campaignId=${selected.id}`, { scroll: false });
+  }, [selected, campaignIdParam, router]);
 
   const snippet = selected
     ? `<script src="${origin || "https://<이 앱의 도메인>"}/pixel.js" data-campaign-id="${selected.id}"></script>`
